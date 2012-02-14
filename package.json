@@ -1,0 +1,8 @@
+{
+  "name": "junc",
+  "author": "Daisuke MINO <daisuke.mino@gmail.com>",
+  "description": "Asynchronous flow-controll module.",
+  "version": "0.0.0",
+  "main": "lib/node/junc",
+  "license": "MIT"
+}
