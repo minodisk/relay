@@ -65,10 +65,10 @@ class Actor
   _onStart: ->
     @onStart? @
 
-  _onComplete: ->
+  _onComplete: (args)->
     if @_running
       @_running = false
-      @onComplete?()
+      @onComplete?.apply @, args
 
 class FunctionActor extends Actor
 
@@ -77,13 +77,13 @@ class FunctionActor extends Actor
     if typeof @func isnt 'function'
       throw new TypeError 'Arguments[0] of FunctionActor must be inspected Function.'
 
-  start: (args)->
+  start: (args...)->
     super()
     @func.apply @, args
     unless @async then @next()
 
   next: (args...)=>
-    @onComplete? args
+    @_onComplete args
 
 class WaitActor extends FunctionActor
 
@@ -117,67 +117,74 @@ class GroupActor extends Actor
       actor._reset()
     return
 
-  _act: (actor, args)->
-    if @onError then actor.onError = @onError
-    actor.onComplete = @next
-    actor.params = @params
-    if actor instanceof GroupActor
-      actor.start args
-    else
-      #args = _slice.call arguments
-      console.log '_act', @currentPhase, args
-      #args.unshift @
-      actor.currentPhase = @currentPhase
-      actor.totalPhase = @totalPhase
-      actor.start args
-
 class SerialActor extends GroupActor
 
   constructor: (actors)->
     super actors
 
-  start: (args)->
+  start: (args...)->
     super()
     if @currentPhase < @totalPhase
       @_act @_actors[@currentPhase], args
       @_onStart()
     return
 
-  next: (args)=>
-    console.log 'next', @currentPhase, args
+  next: (args...)=>
     #TODO remove '?'
     @params = @_actors[@currentPhase]?.params
     if ++@currentPhase < @totalPhase
       @_act @_actors[@currentPhase], args
     else if @currentPhase is @totalPhase
-      @_onComplete()
+      @_onComplete args
     else
       @currentPhase = @totalPhase
     return
+
+  _act: (actor, args)->
+    actor.onComplete = @next
+    actor.params = @params
+    if actor instanceof GroupActor
+      actor.start args
+    else
+      actor.currentPhase = @currentPhase
+      actor.totalPhase = @totalPhase
+      actor.start.apply actor, args
 
 class ParallelActor extends GroupActor
 
   constructor: (actors)->
     super actors
+    @argsStorage = []
 
-  start: (args)->
+  start: (args...)->
     super()
     if @currentPhase < @totalPhase
       @_act args
       @_onStart()
     return
 
-  next: (args)=>
+  next: (i, args...)=>
+    @argsStorage[i] = args
     setTimeout (=>
       if ++@currentPhase >= @totalPhase
         @currentPhase = @totalPhase
-        @_onComplete args
+        @_onComplete @argsStorage
     ), 0
     return
 
   _act: (args)->
-    for actor in @_actors
-      super actor, args
+    for actor, i in @_actors
+      actor.onComplete = do (i)=>
+        (args...)=>
+          args.unshift i
+          @next.apply @, args
+      actor.params = @params
+      if actor instanceof GroupActor
+        actor.start args
+      else
+        actor.currentPhase = @currentPhase
+        actor.totalPhase = @totalPhase
+        actor.start.apply actor, args
 
 class RepeatActor extends SerialActor
 

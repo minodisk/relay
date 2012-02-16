@@ -2,7 +2,7 @@ fs = require 'fs'
 Junc = require '../lib/browser/junc'
 
 module.exports =
-###
+
 'test phase system':
   sync: (test)->
     junc = Junc.sync(->
@@ -586,7 +586,7 @@ module.exports =
         test.strictEqual junc.params.num, 6
         test.done()
       junc.start()
-###
+
 'test arguments':
   sync: (test)->
     junc = Junc.sync((a, b)->
@@ -596,7 +596,6 @@ module.exports =
     junc.onComplete = ->
       test.done()
     junc.start 'a', 'b'
-
   async: (test)->
     junc = Junc.async((a, b)->
         test.strictEqual a, 'a'
@@ -608,7 +607,6 @@ module.exports =
       test.strictEqual b, 'b'
       test.done()
     junc.start 'a', 'b'
-
   file: (test)->
     junc = Junc.async(->
         fs.readFile "#{__dirname}/data/numbers.json", 'utf8', @next
@@ -620,6 +618,34 @@ module.exports =
     junc.start()
 
   serial:
+    sync: (test)->
+      junc = Junc.serial(
+        Junc.sync((a, b)->
+            test.strictEqual a, 'a'
+            test.strictEqual b, 'b'
+        )
+      )
+      junc.onComplete = ->
+        test.done()
+      junc.start 'a', 'b'
+    async: (test)->
+      junc = Junc.serial(
+        Junc.async((a, b)->
+            test.strictEqual a, 'a'
+            test.strictEqual b, 'b'
+            @next 'c', 'd'
+        )
+        Junc.async((c, d)->
+            test.strictEqual c, 'c'
+            test.strictEqual d, 'd'
+            @next 'e', 'f'
+        )
+      )
+      junc.onComplete = (e, f)->
+        test.strictEqual e, 'e'
+        test.strictEqual f, 'f'
+        test.done()
+      junc.start 'a', 'b'
     file: (test)->
       junc = Junc.serial(
         Junc.async(->
@@ -633,3 +659,37 @@ module.exports =
       junc.onComplete = ()->
         test.done()
       junc.start()
+
+  parallel:
+    sync: (test)->
+      junc = Junc.parallel(
+        Junc.sync((a, b)->
+            test.strictEqual a, 'a'
+            test.strictEqual b, 'b'
+        )
+        Junc.sync((a, b)->
+            test.strictEqual a, 'a'
+            test.strictEqual b, 'b'
+        )
+      )
+      junc.onComplete = ->
+        test.done()
+      junc.start 'a', 'b'
+    async: (test)->
+      junc = Junc.parallel(
+        Junc.async((a, b)->
+            test.strictEqual a, 'a'
+            test.strictEqual b, 'b'
+            @next 'c', 'd'
+        )
+        Junc.async((a, b)->
+            test.strictEqual a, 'a'
+            test.strictEqual b, 'b'
+            @next 'e', 'f'
+        )
+      )
+      junc.onComplete = (args0, args1)->
+        test.deepEqual args0, ['c', 'd']
+        test.deepEqual args1, ['e', 'f']
+        test.done()
+      junc.start 'a', 'b'
