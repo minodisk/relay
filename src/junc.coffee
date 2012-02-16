@@ -56,9 +56,15 @@ class Actor
       @stop()
     @_reset()
     @_running = true
+    @
 
   stop: ->
     @_running = false
+    @
+
+  complete: (callback)->
+    @onComplete = callback
+    @
 
   _reset  : ->
 
@@ -81,9 +87,11 @@ class FunctionActor extends Actor
     super()
     @func.apply @, args
     unless @async then @next()
+    @
 
   next: (args...)=>
     @_onComplete args
+    @
 
 class WaitActor extends FunctionActor
 
@@ -108,7 +116,7 @@ class GroupActor extends Actor
     super()
     for actor in @_actors
       if actor instanceof Actor then actor.stop()
-    return
+    @
 
   _reset: ->
     super()
@@ -127,7 +135,7 @@ class SerialActor extends GroupActor
     if @currentPhase < @totalPhase
       @_act @_actors[@currentPhase], args
       @_onStart()
-    return
+    @
 
   next: (args...)=>
     #TODO remove '?'
@@ -138,7 +146,7 @@ class SerialActor extends GroupActor
       @_onComplete args
     else
       @currentPhase = @totalPhase
-    return
+    @
 
   _act: (actor, args)->
     actor.onComplete = @next
@@ -161,7 +169,7 @@ class ParallelActor extends GroupActor
     if @currentPhase < @totalPhase
       @_act args
       @_onStart()
-    return
+    @
 
   next: (i, args...)=>
     @argsStorage[i] = args
@@ -170,7 +178,7 @@ class ParallelActor extends GroupActor
         @currentPhase = @totalPhase
         @_onComplete @argsStorage
     ), 0
-    return
+    @
 
   _act: (args)->
     for actor, i in @_actors
@@ -206,11 +214,6 @@ class EasingActor extends Actor
       @target = @object = target
     @_requestAnimationFrame = AnimationFrameTicker.getInstance()
 
-  clone: ->
-    actor = new EasingActor null, @src, @dst, @duration, @easing
-    actor.target = @target
-    actor.object = @object
-
   start: ->
     super()
     object = @object
@@ -241,11 +244,7 @@ class EasingActor extends Actor
     @_beginningTime = new Date().getTime()
     @_requestAnimationFrame.addHandler @_update
     @onStart?()
-    return
-
-  stop: ->
-    super()
-    return
+    @
 
   _update: (time)=>
     @time = time - @_beginningTime

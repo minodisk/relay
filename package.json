@@ -1,8 +1,13 @@
 {
   "name": "junc",
-  "author": "Daisuke MINO <daisuke.mino@gmail.com>",
+  "version": "0.0.1",
   "description": "Asynchronous flow-controll module.",
-  "version": "0.0.0",
-  "main": "lib/node/junc",
-  "license": "MIT"
+  "tags": ["flow-controller"],
+  "author": "Daisuke MINO <daisuke.mino@gmail.com>",
+  "license": "MIT",
+  "main": "./lib/node/junc",
+  "repository": {
+    "type": "git",
+    "url": "https://minodisk@github.com/minodisk/junc-js.git"
+  }
 }
