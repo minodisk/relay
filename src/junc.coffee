@@ -16,6 +16,9 @@ _requestAnimationFrame = do ->
   window?.msRequestAnimationFrame or
   window?.oRequestAnimationFrame or
   (callback) -> setTimeout (()->callback((new Date()).getTime())), 16.666666666666668
+_isArray = Array.isArray || (obj)-> Object.prototype.toString.call(obj) is '[object Array]'
+#else
+_isArray = Array.isArray
 #endif
 
 class Junc
@@ -30,16 +33,20 @@ class Junc
     new WaitActor delay
 
   @serial: (actors...)->
+    if _isArray actors[0]
+      actors = actors[0]
     new SerialActor actors
 
   @parallel: (actors...)->
+    if _isArray actors[0]
+      actors = actors[0]
     new ParallelActor actors
 
   @repeat: (actor, repeatCount)->
     new RepeatActor actor, repeatCount
 
   #if BROWSER
-  @tween : (target, src, dst, duration = 1000, easing = Easing.linear)->
+  @tween: (target, src, dst, duration = 1000, easing = Easing.linear)->
     new EasingActor target, src, dst, duration, easing
 
   @to: (target, dst, duration = 1000, easing = Easing.linear)->
@@ -66,7 +73,7 @@ class Actor
     @onComplete = callback
     @
 
-  _reset  : ->
+  _reset: ->
 
   _onStart: ->
     @onStart? @
@@ -138,7 +145,7 @@ class SerialActor extends GroupActor
     @
 
   next: (args...)=>
-    #TODO remove '?'
+  #TODO remove '?'
     @params = @_actors[@currentPhase]?.params
     if ++@currentPhase < @totalPhase
       @_act @_actors[@currentPhase], args
@@ -464,14 +471,14 @@ class Easing
       _s = s
       t /= d
       c * t * t * ((_s + 1) * t - _s) + b
-  @easeInBack    : Easing.easeInBackWith()
+  @easeInBack: Easing.easeInBackWith()
 
   @easeOutBackWith: (s = 1.70158)->
     (t, b, c, d)->
       _s = s
       t = t / d - 1
       c * (t * t * ((_s + 1) * t + _s) + 1) + b
-  @easeOutBack    : @easeOutBackWith()
+  @easeOutBack: @easeOutBackWith()
 
   @easeInOutBackWith: (s = 1.70158)->
     (t, b, c, d)->
@@ -482,7 +489,7 @@ class Easing
       else
         t -= 2
         c / 2 * (t * t * ((_s + 1) * t + _s) + 2) + b
-  @easeInOutBack    : @easeInOutBackWith()
+  @easeInOutBack: @easeInOutBackWith()
 
   @easeOutInBackWith: (s = 1.70158)->
     (t, b, c, d)->
@@ -492,7 +499,7 @@ class Easing
         c / 2 * (t * t * ((_s + 1) * t + _s) + 1) + b
       else
         c / 2 * (t * t * ((_s + 1) * t - _s) + 1) + b
-  @easeOutInBack    : @easeOutInBackWith()
+  @easeOutInBack: @easeOutInBackWith()
 
   @easeInBounce: (t, b, c, d)->
     t = 1 - t / d
@@ -610,7 +617,7 @@ class Easing
       else
         s = _p / _PI_D * _asin(c / _a)
       -_a * _pow(2, 10 * t) * _sin((t * d - s) * _PI_D / _p) + b
-  @easeInElastic    : @easeInElasticWith()
+  @easeInElastic: @easeInElasticWith()
 
   @easeOutElasticWith: (a = 0, p = 0)->
     (t, b, c, d)->
@@ -625,7 +632,7 @@ class Easing
       else
         s = _p / _PI_D * _asin(c / _a)
       _a * _pow(2, -10 * t) * _sin((t * d - s) * _PI_D / _p) + b + c
-  @easeOutElastic    : @easeOutElasticWith()
+  @easeOutElastic: @easeOutElasticWith()
 
   @easeInOutElasticWith: (a = 0, p = 0)->
     (t, b, c, d)->
@@ -643,7 +650,7 @@ class Easing
         -_a / 2 * _pow(2, 10 * t) * _sin((t * d - s) * _PI_D / _p) + b
       else
         _a / 2 * _pow(2, -10 * t) * _sin((t * d - s) * _PI_D / _p) + b + c
-  @easeInOutElastic    : @easeInOutElasticWith()
+  @easeInOutElastic: @easeInOutElasticWith()
 
   @easeOutInElasticWith: (a = 0, p = 0)->
     (t, b, c, d)->
@@ -663,7 +670,7 @@ class Easing
       else
         t -= 2
         -_a * _pow(2, 10 * t) * _sin((t * d - s) * _PI_D / _p) + b + c
-  @easeOutInElastic    : @easeOutInElasticWith()
+  @easeOutInElastic: @easeOutInElasticWith()
 #endif
 
 #if BROWSER

@@ -693,3 +693,18 @@ module.exports =
         test.deepEqual args1, ['e', 'f']
         test.done()
       junc.start 'a', 'b'
+
+'test dynamic construction':
+  file: (test)->
+    Junc.serial(
+      Junc.async(
+
+      )
+      Junc.async(
+
+      )
+      Junc.parallel
+      Junc.async(
+
+      )
+    ).start()
