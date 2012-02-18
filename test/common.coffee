@@ -697,27 +697,22 @@ module.exports =
 'test dynamic construction':
   serial: (test)->
     Junc.serial(
-      Junc.async(->
+      Junc.sync(->
           @params.str = 'a'
           @next Junc.sync(->
               @params.str += 'b'
-              console.log @params.str
           ), Junc.sync(->
               @params.str += 'c'
-              console.log @params.str
           ), Junc.sync(->
               @params.str += 'd'
-              console.log @params.str
           )
       )
       Junc.serial
-      Junc.async(->
-          console.log @
-          console.log @params.str
-          @next()
+      Junc.sync(->
+          @params.str += 'e'
       )
-    )
-    .complete(
-      (html)->
+    ).complete(
+      ->
+        test.strictEqual @params.str, 'abcde'
         test.done()
     ).start()

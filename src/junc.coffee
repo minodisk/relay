@@ -125,6 +125,9 @@ class GroupActor extends Actor
       if actor instanceof Actor then actor.stop()
     @
 
+  interrupt: (actor)->
+    #TODO implement
+
   _reset: ->
     super()
     @currentPhase = 0
@@ -138,7 +141,6 @@ class SerialActor extends GroupActor
     super actors
 
   start: (args...)->
-    console.log 'start========'
     super()
     if @currentPhase < @totalPhase
       @_act @_getCurrentActor(args), args
@@ -146,13 +148,11 @@ class SerialActor extends GroupActor
     @
 
   next: (args...)=>
-    console.log 'next---------'
     #TODO remove '?'
     @params = @_dst[@currentPhase]?.params
     if ++@currentPhase < @totalPhase
       actor = @_getCurrentActor args
       @_act actor, args
-      console.log '+', actor?
     else if @currentPhase is @totalPhase
       @_onComplete args
     else
