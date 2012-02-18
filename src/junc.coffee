@@ -33,12 +33,12 @@ class Junc
     new WaitActor delay
 
   @serial: (actors...)->
-    if _isArray actors[0]
+    if _isArray(actors[0])
       actors = actors[0]
     new SerialActor actors
 
   @parallel: (actors...)->
-    if _isArray actors[0]
+    if _isArray(actors[0])
       actors = actors[0]
     new ParallelActor actors
 
@@ -112,24 +112,24 @@ class GroupActor extends Actor
   constructor: (actors)->
     super()
     for actor in actors
-      unless actor instanceof Actor
+      unless actor instanceof Actor or actor is Junc.serial or actor is Junc.parallel
         throw new TypeError 'Arguments[0] of GroupActor must be inspected Array of Actor.'
-    @_actors = actors
+    @_src = actors
+    @_dst = []
     @currentPhase = 0
     @totalPhase = actors.length
-    @userData = {}
 
   stop: ->
     super()
-    for actor in @_actors
+    for actor in @_dst
       if actor instanceof Actor then actor.stop()
     @
 
   _reset: ->
     super()
     @currentPhase = 0
-    for actor in @_actors
-      actor._reset()
+    for actor in @_dst
+      actor._reset?()
     return
 
 class SerialActor extends GroupActor
@@ -138,22 +138,35 @@ class SerialActor extends GroupActor
     super actors
 
   start: (args...)->
+    console.log 'start========'
     super()
     if @currentPhase < @totalPhase
-      @_act @_actors[@currentPhase], args
+      @_act @_getCurrentActor(args), args
       @_onStart()
     @
 
   next: (args...)=>
-  #TODO remove '?'
-    @params = @_actors[@currentPhase]?.params
+    console.log 'next---------'
+    #TODO remove '?'
+    @params = @_dst[@currentPhase]?.params
     if ++@currentPhase < @totalPhase
-      @_act @_actors[@currentPhase], args
+      actor = @_getCurrentActor args
+      @_act actor, args
+      console.log '+', actor?
     else if @currentPhase is @totalPhase
       @_onComplete args
     else
       @currentPhase = @totalPhase
     @
+
+  _getCurrentActor: (args)->
+    actor = @_src[@currentPhase]
+    if actor is Junc.serial or actor is Junc.parallel
+      actor = actor.apply Junc, args
+      while args.length
+        args.pop()
+    @_dst[@currentPhase] = actor
+    actor
 
   _act: (actor, args)->
     actor.onComplete = @next
@@ -188,7 +201,7 @@ class ParallelActor extends GroupActor
     @
 
   _act: (args)->
-    for actor, i in @_actors
+    for actor, i in @_src
       actor.onComplete = do (i)=>
         (args...)=>
           args.unshift i

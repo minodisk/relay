@@ -695,16 +695,29 @@ module.exports =
       junc.start 'a', 'b'
 
 'test dynamic construction':
-  file: (test)->
+  serial: (test)->
     Junc.serial(
-      Junc.async(
-
+      Junc.async(->
+          @params.str = 'a'
+          @next Junc.sync(->
+              @params.str += 'b'
+              console.log @params.str
+          ), Junc.sync(->
+              @params.str += 'c'
+              console.log @params.str
+          ), Junc.sync(->
+              @params.str += 'd'
+              console.log @params.str
+          )
       )
-      Junc.async(
-
+      Junc.serial
+      Junc.async(->
+          console.log @
+          console.log @params.str
+          @next()
       )
-      Junc.parallel
-      Junc.async(
-
-      )
+    )
+    .complete(
+      (html)->
+        test.done()
     ).start()
