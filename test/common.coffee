@@ -34,7 +34,6 @@ module.exports =
   wait: (test)->
     Junc.wait(10).complete(
       ->
-      #TODO called twice
         test.strictEqual @localIndex, undefined
         test.strictEqual @localLength, undefined
         test.strictEqual @globalIndex, undefined
@@ -506,155 +505,213 @@ module.exports =
   sync: (test)->
     Junc.sync(
       ->
-        @params.a = 'foo'
+        @global.a = 'foo'
     ).complete(
       ->
-        test.strictEqual @params.a, 'foo'
+        test.strictEqual @global.a, 'foo'
         test.done()
     ).start()
   async: (test)->
     Junc.async(
       ->
-        @params.a = 'foo'
+        @global.a = 'foo'
         setTimeout @next, 10
     ).complete(
       ->
-        test.strictEqual @params.a, 'foo'
+        test.strictEqual @global.a, 'foo'
         test.done()
     ).start()
 
   serial:
     sync: (test)->
       Junc.serial(
-        Junc.sync(-> @params.str = 'foo')
-        Junc.sync(-> @params.str += 'bar')
-        Junc.sync(-> @params.str += 'baz')
+        Junc.sync(->
+            @local.str = 'foo'
+            @global.str = 'foo'
+        )
+        Junc.sync(->
+            @local.str += 'bar'
+            @global.str += 'bar'
+        )
+        Junc.sync(->
+            @local.str += 'baz'
+            @global.str += 'baz'
+        )
       ).complete(
         ->
-          test.strictEqual @params.str, 'foobarbaz'
+          test.strictEqual @local.str, 'foobarbaz'
+          test.strictEqual @global.str, 'foobarbaz'
           test.done()
       ).start()
     serial: (test)->
       Junc.serial(
-        Junc.sync(-> @params.str = 'foo')
+        Junc.sync(->
+            @local.str = 'foo'
+            @global.str = 'foo'
+        )
         Junc.serial(
-          Junc.sync(-> @params.str += 'bar')
-          Junc.sync(-> @params.str += 'baz')
+          Junc.sync(->
+              test.strictEqual @local.str, undefined
+              @local.str = 'bar'
+              @global.str += 'bar'
+          )
+          Junc.sync(->
+              @local.str += 'baz'
+              @global.str += 'baz'
+              test.strictEqual @local.str, 'barbaz'
+          )
+        )
+        Junc.sync(->
+            @local.str += 'qux'
+            @global.str += 'qux'
         )
       ).complete(
         ->
-          test.strictEqual @params.str, 'foobarbaz'
+          test.strictEqual @local.str, 'fooqux'
+          test.strictEqual @global.str, 'foobarbazqux'
           test.done()
       ).start()
     parallel: (test)->
       Junc.serial(
-        Junc.sync(-> @params.num = 1)
+        Junc.sync(->
+            @local.num = 2
+            @global.num = 2
+        )
         Junc.parallel(
-          Junc.sync(-> @params.num += 2)
-          Junc.sync(-> @params.num += 3)
+          Junc.sync(->
+              test.strictEqual @local.num, undefined
+              @local.num = 3
+              @global.num *= 3
+          )
+          Junc.sync(->
+              @local.num *= 4
+              @global.num *= 4
+              test.strictEqual @local.num, 12
+          )
+        )
+        Junc.sync(->
+            @local.num += 1
+            @global.num += 1
         )
       ).complete(
         ->
-          test.strictEqual @params.num, 6
+          test.strictEqual @local.num, 3
+          test.strictEqual @global.num, 25
           test.done()
       ).start()
     deep: (test)->
       Junc.serial(
         Junc.sync(->
-            @params.a = 10
-            @params.b = 'foo'
-            @params.c = { num: 30, str: 'bar' }
-            @params.d = [1, 'baz']
+            @local.a = 10
+            @global.a = 10
+            @global.b = 'foo'
+            @global.c = { num: 30, str: 'bar' }
+            @global.d = [1, 'baz']
         )
         Junc.wait(10)
         Junc.repeat(
           Junc.parallel(
             Junc.sync(->
-                @params.a += 1
-                @params.b += 'a'
-                @params.c.num -= 2
-                @params.c.str += 'b'
-                @params.d[0] *= 2
-                @params.d[1] += 'c'
+                test.strictEqual @local.a, undefined
+                @local.a = 1
+                @global.a += 1
+                @global.b += 'a'
+                @global.c.num -= 2
+                @global.c.str += 'b'
+                @global.d[0] *= 2
+                @global.d[1] += 'c'
+                test.strictEqual @local.a, 1
             )
             Junc.wait(10)
             Junc.serial(
               Junc.sync(->
-                  @params.a *= 2
-                  @params.c.num /= 2
-                  @params.d[0] *= 2
+                  test.strictEqual @local.a, undefined
+                  @local.a = 2
+                  @global.a *= 2
+                  @global.c.num /= 2
+                  @global.d[0] *= 2
               )
               Junc.wait(10)
               Junc.repeat(
                 Junc.sync(->
-                    @params.b += '-'
-                    @params.c.str += '='
-                    @params.d[1] += '_'
+                    if @repeatIndex is 0
+                      @local.a = 2
+                    else
+                      @local.a *= 2
+                    if @repeatIndex is 2
+                      test.strictEqual @local.a, 8
+                    @global.b += '-'
+                    @global.c.str += '='
+                    @global.d[1] += '_'
                 ), 3
               )
             )
             Junc.wait(10)
             Junc.sync(->
-                @params.a += 4
-                @params.b += 'd'
-                @params.c.num += 4
-                @params.c.str += 'e'
-                @params.d[0] *= 2
-                @params.d[1] += 'f'
+                @local.a += 4
+                @global.a += 4
+                @global.b += 'd'
+                @global.c.num += 4
+                @global.c.str += 'e'
+                @global.d[0] *= 2
+                @global.d[1] += 'f'
+                test.strictEqual @local.a, 5
             )
           ), 3
         )
         Junc.wait(10)
         Junc.sync(->
-            @params.a += 7
-            @params.b += 'g'
-            @params.c.num += 1
-            @params.c.str += 'h'
-            @params.d[0] += 2
-            @params.d[1] += 'i'
+            @local.a += 7
+            @global.a += 7
+            @global.b += 'g'
+            @global.c.num += 1
+            @global.c.str += 'h'
+            @global.d[0] += 2
+            @global.d[1] += 'i'
         )
       ).complete(
         ->
-          test.strictEqual @params.a, 129
-          test.strictEqual @params.b, 'fooa---da---da---dg'
-          test.deepEqual @params.c, { num: 10, str: 'barb===eb===eb===eh'}
-          test.deepEqual @params.d, [514, 'bazc___fc___fc___fi']
+          test.strictEqual @local.a, 17
+          test.strictEqual @global.a, 129
+          test.strictEqual @global.b, 'fooa---da---da---dg'
+          test.deepEqual @global.c, { num: 10, str: 'barb===eb===eb===eh'}
+          test.deepEqual @global.d, [514, 'bazc___fc___fc___fi']
           test.done()
       ).start()
 
   parallel:
     sync: (test)->
       Junc.parallel(
-        Junc.sync(-> @params.num = 1)
-        Junc.sync(-> @params.num += 2)
-        Junc.sync(-> @params.num += 3)
+        Junc.sync(-> @global.num = 1)
+        Junc.sync(-> @global.num += 2)
+        Junc.sync(-> @global.num += 3)
       ).complete(
         ->
-          test.strictEqual @params.num, 6
+          test.strictEqual @global.num, 6
           test.done()
       ).start()
     serial: (test)->
       Junc.parallel(
-        Junc.sync(-> @params.num = 1)
+        Junc.sync(-> @global.num = 1)
         Junc.serial(
-          Junc.sync(-> @params.num += 2)
-          Junc.sync(-> @params.num += 3)
+          Junc.sync(-> @global.num += 2)
+          Junc.sync(-> @global.num += 3)
         )
       ).complete(
         ->
-          test.strictEqual @params.num, 6
+          test.strictEqual @global.num, 6
           test.done()
       ).start()
     parallel: (test)->
       Junc.parallel(
-        Junc.sync(-> @params.num = 1)
+        Junc.sync(-> @global.num = 1)
         Junc.parallel(
-          Junc.sync(-> @params.num += 2)
-          Junc.sync(-> @params.num += 3)
+          Junc.sync(-> @global.num += 2)
+          Junc.sync(-> @global.num += 3)
         )
       ).complete(
         ->
-          test.strictEqual @params.num, 6
+          test.strictEqual @global.num, 6
           test.done()
       ).start()
 
@@ -772,42 +829,43 @@ module.exports =
   serial: (test)->
     Junc.serial(
       Junc.sync(->
-          @params.str = 'a'
+          @global.str = 'a'
           @next Junc.sync(->
-              @params.str += 'b'
+              @global.str += 'b'
           ), Junc.sync(->
-              @params.str += 'c'
+              @global.str += 'c'
           ), Junc.sync(->
-              @params.str += 'd'
+              @global.str += 'd'
           )
       )
       Junc.serial
       Junc.sync(->
-          @params.str += 'e'
+          @global.str += 'e'
       )
     ).complete(
       ->
-        test.strictEqual @params.str, 'abcde'
+        test.strictEqual @global.str, 'abcde'
         test.done()
     ).start()
   parallel: (test)->
     Junc.serial(
       Junc.sync(->
-          @params.value = 0
+          @global.value = 0
           @next Junc.sync(->
-              @params.value += 1
+              @global.value += 1
           ), Junc.sync(->
-              @params.value += 2
+              @global.value += 2
           ), Junc.sync(->
-              @params.value += 3
+              @global.value += 3
           )
       )
       Junc.parallel
       Junc.sync(->
-          @params.value *= 10
+          @global.value *= 10
       )
     ).complete(
       ->
-        test.strictEqual @params.value, 60
+        test.strictEqual @global.value, 60
         test.done()
     ).start()
+    

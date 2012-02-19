@@ -56,7 +56,6 @@ class Junc
 class Actor
 
   constructor: ->
-    @params = {}
     @root = @
 
   start: ->
@@ -75,6 +74,8 @@ class Actor
     @
 
   _reset: ->
+    if @ is @root
+      @global = {}
 
   _onStart: ->
     @onStart? @
@@ -128,6 +129,7 @@ class GroupActor extends Actor
 
   _reset: ->
     super()
+    @local = {}
     @_dst = []
     @localIndex = 0
     @localLength = @_src.length
@@ -142,14 +144,16 @@ class GroupActor extends Actor
 
   _act: (actor, args)->
     actor.root = @root
-    actor.repeatRoot = @repeatRoot
-    actor.params = @params
+    unless actor instanceof RepeatActor
+      actor.repeatRoot = @repeatRoot
+    actor.global = @global
     actor.globalIndex = @root.globalIndex
     actor.repeatIndex = @repeatRoot?.repeatIndex
     actor.repeatLength = @repeatRoot?.repeatLength
     if actor instanceof GroupActor
       actor.start args
     else
+      actor.local = @local
       actor.localIndex = @localIndex
       actor.localLength = @localLength
       actor.start.apply actor, args
@@ -168,7 +172,6 @@ class SerialActor extends GroupActor
 
   next: (args...)=>
     actor = @_dst[@localIndex]
-    @params = actor.params
     @localIndex++
     if actor instanceof GroupActor
       @globalIndex = @root.globalIndex
