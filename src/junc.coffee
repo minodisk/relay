@@ -57,6 +57,7 @@ class Actor
 
   constructor: ->
     @params = {}
+    @root = @
 
   start: ->
     if @_running
@@ -115,9 +116,6 @@ class GroupActor extends Actor
       unless actor instanceof Actor or actor is Junc.serial or actor is Junc.parallel
         throw new TypeError 'Arguments[0] of GroupActor must be inspected Array of Actor.'
     @_src = actors
-    @_dst = []
-    @currentPhase = 0
-    @totalPhase = actors.length
 
   stop: ->
     super()
@@ -130,10 +128,31 @@ class GroupActor extends Actor
 
   _reset: ->
     super()
-    @currentPhase = 0
-    for actor in @_dst
+    @_dst = []
+    @localIndex = 0
+    @localLength = @_src.length
+    delete @globalIndex
+    delete @repeatIndex
+    delete @repeatLength
+    if @ is @root
+      @globalIndex = 0
+    for actor in @_src
       actor._reset?()
     return
+
+  _act: (actor, args)->
+    actor.root = @root
+    actor.repeatRoot = @repeatRoot
+    actor.params = @params
+    actor.globalIndex = @root.globalIndex
+    actor.repeatIndex = @repeatRoot?.repeatIndex
+    actor.repeatLength = @repeatRoot?.repeatLength
+    if actor instanceof GroupActor
+      actor.start args
+    else
+      actor.localIndex = @localIndex
+      actor.localLength = @localLength
+      actor.start.apply actor, args
 
 class SerialActor extends GroupActor
 
@@ -142,41 +161,60 @@ class SerialActor extends GroupActor
 
   start: (args...)->
     super()
-    if @currentPhase < @totalPhase
+    if @localIndex < @localLength
       @_act @_getCurrentActor(args), args
       @_onStart()
     @
 
   next: (args...)=>
-    #TODO remove '?'
-    @params = @_dst[@currentPhase]?.params
-    if ++@currentPhase < @totalPhase
+    actor = @_dst[@localIndex]
+    @params = actor.params
+    @localIndex++
+    if actor instanceof GroupActor
+      @globalIndex = @root.globalIndex
+    else
+      @root.globalIndex++
+    if @localIndex < @localLength
       actor = @_getCurrentActor args
       @_act actor, args
-    else if @currentPhase is @totalPhase
+    else if @localIndex is @localLength
       @_onComplete args
-    else
-      @currentPhase = @totalPhase
     @
 
   _getCurrentActor: (args)->
-    actor = @_src[@currentPhase]
+    actor = @_src[@localIndex]
     if actor is Junc.serial or actor is Junc.parallel
       actor = actor.apply Junc, args
       while args.length
         args.pop()
-    @_dst[@currentPhase] = actor
+    @_dst[@localIndex] = actor
     actor
 
   _act: (actor, args)->
     actor.onComplete = @next
-    actor.params = @params
-    if actor instanceof GroupActor
-      actor.start args
-    else
-      actor.currentPhase = @currentPhase
-      actor.totalPhase = @totalPhase
-      actor.start.apply actor, args
+    super actor, args
+
+class RepeatActor extends SerialActor
+
+  constructor: (actor, repeatCount)->
+    actors = []
+    while repeatCount--
+      actors.push actor
+    super actors
+    @repeatRoot = @
+
+  next: ->
+    @repeatIndex++
+    super()
+
+  _reset: ->
+    super()
+    @repeatIndex = 0
+    @repeatLength = @_src.length
+
+  _act: (actor, args)->
+    #actor._reset()
+    super actor, args
 
 class ParallelActor extends GroupActor
 
@@ -186,7 +224,7 @@ class ParallelActor extends GroupActor
 
   start: (args...)->
     super()
-    if @currentPhase < @totalPhase
+    if @localIndex < @localLength
       @_act args
       @_onStart()
     @
@@ -194,8 +232,10 @@ class ParallelActor extends GroupActor
   next: (i, args...)=>
     @argsStorage[i] = args
     setTimeout (=>
-      if ++@currentPhase >= @totalPhase
-        @currentPhase = @totalPhase
+      @localIndex++
+      @root.globalIndex++
+      if @localIndex >= @localLength
+        @localIndex = @localLength
         @_onComplete @argsStorage
     ), 0
     @
@@ -206,30 +246,19 @@ class ParallelActor extends GroupActor
         (args...)=>
           args.unshift i
           @next.apply @, args
-      actor.params = @params
-      if actor instanceof GroupActor
-        actor.start args
-      else
-        actor.currentPhase = @currentPhase
-        actor.totalPhase = @totalPhase
-        actor.start.apply actor, args
-
-class RepeatActor extends SerialActor
-
-  constructor: (actor, repeatCount)->
-    actors = []
-    while repeatCount--
-      actors.push actor
-    super actors
+      super actor, args
 
 #if BROWSER
 class EasingActor extends Actor
+
+  @_getStyle: (element)->
+    getComputedStyle(element, '') or element.currentStyle
 
   constructor: (target, @src, @dst, @duration, @easing)->
     super()
     if window? and target instanceof window.HTMLElement
       @target = target.style
-      @object = @_getStyle target
+      @object = EasingActor._getStyle target
     else
       @target = @object = target
     @_requestAnimationFrame = AnimationFrameTicker.getInstance()
@@ -284,9 +313,6 @@ class EasingActor extends Actor
     if @time is @duration
       @_onComplete()
     return
-
-  _getStyle: (element)->
-    getComputedStyle(element, '') or element.currentStyle
 
 class AnimationFrameTicker
 
