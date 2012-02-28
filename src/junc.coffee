@@ -15,7 +15,7 @@ _requestAnimationFrame = do ->
   window?.mozRequestAnimationFrame or
   window?.msRequestAnimationFrame or
   window?.oRequestAnimationFrame or
-  (callback) -> setTimeout (()->callback((new Date()).getTime())), 16.666666666666668
+  (callback) -> setTimeout (->callback(new Date().getTime())), 16.666666666666668
 _isArray = Array.isArray || (obj)-> Object.prototype.toString.call(obj) is '[object Array]'
 #else
 _isArray = Array.isArray
@@ -23,11 +23,8 @@ _isArray = Array.isArray
 
 class Junc
 
-  @sync: (func)->
-    new FunctionActor func, false
-
-  @async: (func)->
-    new FunctionActor func, true
+  @func: (func)->
+    new FunctionActor func
 
   @wait: (delay)->
     new WaitActor delay
@@ -87,7 +84,7 @@ class Actor
 
 class FunctionActor extends Actor
 
-  constructor: (@func, @async)->
+  constructor: (@func)->
     super()
     if typeof @func isnt 'function'
       throw new TypeError 'Arguments[0] of FunctionActor must be inspected Function.'
@@ -95,7 +92,6 @@ class FunctionActor extends Actor
   start: (args...)->
     super()
     @func.apply @, args
-    unless @async then @next()
     @
 
   next: (args...)=>
@@ -124,39 +120,33 @@ class GroupActor extends Actor
       if actor instanceof Actor then actor.stop()
     @
 
-  interrupt: (actor)->
-    #TODO implement
-
   _reset: ->
     super()
-    @local = {}
     @_dst = []
-    @localIndex = 0
-    @localLength = @_src.length
-    delete @globalIndex
-    delete @repeatIndex
-    delete @repeatLength
+    @local = {}
+    @local.index = 0
+    @local.length = @_src.length
     if @ is @root
-      @globalIndex = 0
+      @global.index = 0
     for actor in @_src
       actor._reset?()
     return
 
   _act: (actor, args)->
-    actor.root = @root
-    unless actor instanceof RepeatActor
-      actor.repeatRoot = @repeatRoot
-    actor.global = @global
-    actor.globalIndex = @root.globalIndex
-    actor.repeatIndex = @repeatRoot?.repeatIndex
-    actor.repeatLength = @repeatRoot?.repeatLength
-    if actor instanceof GroupActor
-      actor.start args
-    else
-      actor.local = @local
-      actor.localIndex = @localIndex
-      actor.localLength = @localLength
-      actor.start.apply actor, args
+    if @local.index < @local.length
+      actor.root = @root
+      actor.skip = =>
+        @local.index = @local.length
+        @_onComplete()
+      unless actor instanceof RepeatActor
+        actor.repeatRoot = @repeatRoot
+      actor.global = @global
+      actor.repeat = @repeatRoot?.repeat
+      if actor instanceof GroupActor
+        actor.start args
+      else
+        actor.local = @local
+        actor.start.apply actor, args
 
 class SerialActor extends GroupActor
 
@@ -165,32 +155,32 @@ class SerialActor extends GroupActor
 
   start: (args...)->
     super()
-    if @localIndex < @localLength
+    if @local.index < @local.length
       @_act @_getCurrentActor(args), args
       @_onStart()
     @
 
   next: (args...)=>
-    actor = @_dst[@localIndex]
-    @localIndex++
+    actor = @_dst[@local.index]
+    @local.index++
     if actor instanceof GroupActor
-      @globalIndex = @root.globalIndex
+      @global.index = @root.global.index
     else
-      @root.globalIndex++
-    if @localIndex < @localLength
+      @root.global.index++
+    if @local.index < @local.length
       actor = @_getCurrentActor args
       @_act actor, args
-    else if @localIndex is @localLength
+    else if @local.index is @local.length
       @_onComplete args
     @
 
   _getCurrentActor: (args)->
-    actor = @_src[@localIndex]
+    actor = @_src[@local.index]
     if actor is Junc.serial or actor is Junc.parallel
       actor = actor.apply Junc, args
       while args.length
         args.pop()
-    @_dst[@localIndex] = actor
+    @_dst[@local.index] = actor
     actor
 
   _act: (actor, args)->
@@ -207,17 +197,14 @@ class RepeatActor extends SerialActor
     @repeatRoot = @
 
   next: ->
-    @repeatIndex++
+    @repeat.index++
     super()
 
   _reset: ->
     super()
-    @repeatIndex = 0
-    @repeatLength = @_src.length
-
-  _act: (actor, args)->
-    #actor._reset()
-    super actor, args
+    @repeat =
+    index: 0
+    length: @_src.length
 
 class ParallelActor extends GroupActor
 
@@ -227,7 +214,7 @@ class ParallelActor extends GroupActor
 
   start: (args...)->
     super()
-    if @localIndex < @localLength
+    if @local.index < @local.length
       @_act args
       @_onStart()
     @
@@ -235,10 +222,10 @@ class ParallelActor extends GroupActor
   next: (i, args...)=>
     @argsStorage[i] = args
     setTimeout (=>
-      @localIndex++
-      @root.globalIndex++
-      if @localIndex >= @localLength
-        @localIndex = @localLength
+      @local.index++
+      @root.global.index++
+      if @local.index >= @local.length
+        @local.index = @local.length
         @_onComplete @argsStorage
     ), 0
     @
