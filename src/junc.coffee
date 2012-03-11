@@ -711,6 +711,8 @@ else if window?
   unless window.mn? then window.mn = {}
   unless window.mn.dsk? then window.mn.dsk = {}
   window.mn.dsk.Junc = Junc
+  window.mn.dsk.Easing = Easing
+  window.mn.dsk.AnimationFrameTicker = AnimationFrameTicker
 #else
 module.exports = Junc
 #endif
