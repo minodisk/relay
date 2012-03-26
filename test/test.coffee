@@ -803,120 +803,204 @@ module.exports =
       ).start()
 
 'test arguments':
-  sync: (test)->
-    Junc.func(
-      (a, b)->
-        test.strictEqual a, 'a'
-        test.strictEqual b, 'b'
-        @next()
-    ).complete(
-      ->
-        test.done()
-    ).start 'a', 'b'
   func: (test)->
-    Junc.func(
-      (a, b)->
-        test.strictEqual a, 'a'
-        test.strictEqual b, 'b'
-        @next a, b
-    ).complete(
-      (a, b)->
-        test.strictEqual a, 'a'
-        test.strictEqual b, 'b'
-        test.done()
+    Junc.func((a, b)->
+      test.strictEqual a, 'a'
+      test.strictEqual b, 'b'
+      @next a, b
+    ).complete((a, b)->
+      test.strictEqual a, 'a'
+      test.strictEqual b, 'b'
+      test.done()
     ).start 'a', 'b'
   file: (test)->
-    Junc.func(
-      ->
-        fs.readFile "#{__dirname}/data/numbers.json", 'utf8', @next
-    ).complete(
-      (err, data)->
-        numbers = JSON.parse data
-        test.deepEqual numbers, [0, 1, 2, 3, 4]
-        test.done()
+    Junc.func(->
+      fs.readFile "#{__dirname}/data/numbers.json", 'utf8', @next
+    ).complete((err, data)->
+      numbers = JSON.parse data
+      test.deepEqual numbers, [0, 1, 2, 3, 4]
+      test.done()
     ).start()
 
   serial:
-    sync: (test)->
-      Junc.serial(
-        Junc.func((a, b)->
-            test.strictEqual a, 'a'
-            test.strictEqual b, 'b'
-            @next()
-        )
-      ).complete(
-        ->
-          test.done()
-      ).start 'a', 'b'
     func: (test)->
       Junc.serial(
         Junc.func((a, b)->
-            test.strictEqual a, 'a'
-            test.strictEqual b, 'b'
-            @next 'c', 'd'
+          test.strictEqual a, 'a'
+          test.strictEqual b, 'b'
+          @next 'c', 'd'
         )
         Junc.func((c, d)->
+          test.strictEqual c, 'c'
+          test.strictEqual d, 'd'
+          @next 'e', 'f'
+        )
+      ).complete((e, f)->
+        test.strictEqual e, 'e'
+        test.strictEqual f, 'f'
+        test.done()
+      ).start 'a', 'b'
+    serial: (test)->
+      Junc.serial(
+        Junc.func((a, b)->
+          test.strictEqual a, 'a'
+          test.strictEqual b, 'b'
+          @next 'c', 'd'
+        )
+        Junc.serial(
+          Junc.func((c, d)->
             test.strictEqual c, 'c'
             test.strictEqual d, 'd'
             @next 'e', 'f'
+          )
+          Junc.func((e, f)->
+            test.strictEqual e, 'e'
+            test.strictEqual f, 'f'
+            @next 'g', 'h'
+          )
         )
-      ).complete(
-        (e, f)->
-          test.strictEqual e, 'e'
-          test.strictEqual f, 'f'
-          test.done()
+      ).complete((g, h)->
+        test.strictEqual g, 'g'
+        test.strictEqual h, 'h'
+        test.done()
       ).start 'a', 'b'
-    file: (test)->
+    serial: (test)->
       Junc.serial(
-        Junc.func(->
-            fs.readFile "#{__dirname}/data/numbers.json", 'utf8', @next
-        ),
-        Junc.func((err, data)->
-            numbers = JSON.parse data
-            test.deepEqual numbers, [0, 1, 2, 3, 4]
-            @next()
-        )
-      ).complete(
-        ()->
-          test.done()
-      ).start()
-
-  parallel:
-    sync: (test)->
-      Junc.parallel(
         Junc.func((a, b)->
-            test.strictEqual a, 'a'
-            test.strictEqual b, 'b'
-            @next()
+          test.strictEqual a, 'a'
+          test.strictEqual b, 'b'
+          @next 'c', 'd'
         )
-        Junc.func((a, b)->
-            test.strictEqual a, 'a'
-            test.strictEqual b, 'b'
-            @next()
+        Junc.parallel(
+          Junc.func((c, d)->
+            test.strictEqual c, 'c'
+            test.strictEqual d, 'd'
+            @next 'e', 'f'
+          )
+          Junc.func((c, d)->
+            test.strictEqual c, 'c'
+            test.strictEqual d, 'd'
+            @next 'g', 'h'
+          )
         )
-      ).complete(
-        ->
-          test.done()
+      ).complete((results0, results1)->
+        test.deepEqual results0, ['e', 'f']
+        test.deepEqual results1, ['g', 'h']
+        test.done()
       ).start 'a', 'b'
-    func: (test)->
-      Junc.parallel(
-        Junc.func((a, b)->
+    complex: (test)->
+      Junc.serial(
+        Junc.serial(
+          Junc.func((a, b)->
             test.strictEqual a, 'a'
             test.strictEqual b, 'b'
             @next 'c', 'd'
-        )
-        Junc.func((a, b)->
-            test.strictEqual a, 'a'
-            test.strictEqual b, 'b'
+          )
+          Junc.func((c, d)->
+            test.strictEqual c, 'c'
+            test.strictEqual d, 'd'
             @next 'e', 'f'
+          )
         )
-      ).complete(
-        (args0, args1)->
-          test.deepEqual args0, ['c', 'd']
-          test.deepEqual args1, ['e', 'f']
-          test.done()
+        Junc.func((e, f)->
+          test.strictEqual e, 'e'
+          test.strictEqual f, 'f'
+          @next 'g', 'h'
+        )
+      ).complete(->
+        test.done()
       ).start 'a', 'b'
 
+  parallel:
+    func: (test)->
+      Junc.parallel(
+        Junc.func((a, b)->
+          test.strictEqual a, 'a'
+          test.strictEqual b, 'b'
+          @next 'c', 'd'
+        )
+        Junc.func((a, b)->
+          test.strictEqual a, 'a'
+          test.strictEqual b, 'b'
+          @next 'e', 'f'
+        )
+      ).complete((results0, results1)->
+        test.deepEqual results0, ['c', 'd']
+        test.deepEqual results1, ['e', 'f']
+        test.done()
+      ).start 'a', 'b'
+
+  each:
+    func: (test)->
+      counter = 0
+      array = ['a', 'b']
+      Junc.each(
+        Junc.func((elem, i, arr)->
+          test.strictEqual elem, array[counter]
+          test.strictEqual i, counter++
+          test.deepEqual arr, array
+          @next elem, elem + 'c'
+        )
+      ).complete((results0, results1)->
+        test.deepEqual results0, ['a', 'ac']
+        test.deepEqual results1, ['b', 'bc']
+        test.done()
+      ).start array
+    serial: (test)->
+      counter = 0
+      array = ['a', 'b']
+      time = new Date().getTime()
+      Junc.each(
+        Junc.serial(
+          Junc.func((elem, i, arr)->
+            test.strictEqual elem, array[counter]
+            test.strictEqual i, counter++
+            test.deepEqual arr, array
+            setTimeout =>
+              @next elem, elem + 'c'
+            , 100
+          )
+          Junc.func((str0, str1)->
+            setTimeout =>
+              @next str0, str1, str1 + 'd'
+            , 200
+          )
+        )
+      ).complete((results0, results1)->
+        test.deepEqual results0, ['a', 'ac', 'acd']
+        test.deepEqual results1, ['b', 'bc', 'bcd']
+        test.done()
+      ).start array
+
+    parallel: (test)->
+      counter = 0
+      array = ['a', 'b']
+      time = new Date().getTime()
+      Junc.each(
+        Junc.parallel(
+          Junc.func((elem, i, arr)->
+            test.strictEqual elem, array[counter]
+            test.strictEqual i, counter
+            test.deepEqual arr, array
+            setTimeout =>
+              @next elem, elem + 'c'
+            , 100
+          )
+          Junc.func((elem, i, arr)->
+            test.strictEqual elem, array[counter]
+            test.strictEqual i, counter++
+            test.deepEqual arr, array
+            setTimeout =>
+              @next elem, elem + 'd'
+            , 200
+          )
+        )
+      ).complete((results0, results1)->
+        test.deepEqual results0, [['a', 'ac'], ['a', 'ad']]
+        test.deepEqual results1, [['b', 'bc'], ['b', 'bd']]
+        test.done()
+      ).start array
+###
 'test dynamic construction':
   serial: (test)->
     Junc.serial(
@@ -968,7 +1052,7 @@ module.exports =
         test.strictEqual @global.value, 60
         test.done()
     ).start()
-
+###
 'test skip':
   serial: (test)->
     Junc.serial(

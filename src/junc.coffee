@@ -24,9 +24,13 @@ _isArray = Array.isArray
 class Junc
 
   @func: (func)->
+    if (len = arguments.length) isnt (req = 1)
+      throw new TypeError "Junc.func() takes exactly #{req} argument (#{len} given)"
     new FunctionActor func
 
   @wait: (delay)->
+    if (len = arguments.length) isnt (req = 1)
+      throw new TypeError "Junc.wait() takes exactly #{req} argument (#{len} given)"
     new WaitActor delay
 
   @serial: (actors...)->
@@ -40,7 +44,14 @@ class Junc
     new ParallelActor actors
 
   @repeat: (actor, repeatCount)->
+    if (len = arguments.length) isnt (req = 2)
+      throw new TypeError "Junc.repeat() takes exactly #{req} argument (#{len} given)"
     new RepeatActor actor, repeatCount
+
+  @each : (actor)->
+    if (len = arguments.length) isnt (req = 1)
+      throw new TypeError "Junc.each() takes exactly #{req} argument (#{len} given)"
+    new EachActor actor
 
   #if BROWSER
   @tween: (target, src, dst, duration = 1000, easing = Easing.linear)->
@@ -87,7 +98,7 @@ class FunctionActor extends Actor
   constructor: (@func)->
     super()
     if typeof @func isnt 'function'
-      throw new TypeError 'Arguments[0] of FunctionActor must be inspected Function.'
+      throw new TypeError 'new FunctionActor(func) func must be inspected Function.'
 
   start: (args...)->
     super()
@@ -101,6 +112,8 @@ class FunctionActor extends Actor
 class WaitActor extends FunctionActor
 
   constructor: (delay)->
+    if isNaN delay
+      throw new TypeError 'new WaitActor(delay) delay must be inspected Number.'
     super (->
       setTimeout @next, delay
     ), null, true
@@ -110,7 +123,8 @@ class GroupActor extends Actor
   constructor: (actors)->
     super()
     for actor in actors
-      unless actor instanceof Actor or actor is Junc.serial or actor is Junc.parallel
+      #TODO disable dynamic construction
+      unless actor instanceof Actor #or actor is Junc.serial or actor is Junc.parallel
         throw new TypeError 'Arguments[0] of GroupActor must be inspected Array of Actor.'
     @_src = actors
 
@@ -123,9 +137,9 @@ class GroupActor extends Actor
   _reset: ->
     super()
     @_dst = []
-    @local = {}
-    @local.index = 0
-    @local.length = @_src.length
+    @local =
+      index : 0
+      length: @_src.length
     if @ is @root
       @global.index = 0
     for actor in @_src
@@ -133,6 +147,7 @@ class GroupActor extends Actor
     return
 
   _act: (actor, args)->
+    #TODO refactor this comparing
     if @local.index < @local.length
       actor.root = @root
       actor.skip = =>
@@ -142,11 +157,9 @@ class GroupActor extends Actor
         actor.repeatRoot = @repeatRoot
       actor.global = @global
       actor.repeat = @repeatRoot?.repeat
-      if actor instanceof GroupActor
-        actor.start args
-      else
+      unless actor instanceof GroupActor
         actor.local = @local
-        actor.start.apply actor, args
+      actor.start.apply actor, args
 
 class SerialActor extends GroupActor
 
@@ -168,24 +181,56 @@ class SerialActor extends GroupActor
     else
       @root.global.index++
     if @local.index < @local.length
-      actor = @_getCurrentActor args
-      @_act actor, args
+      @_act @_getCurrentActor(args), args
     else if @local.index is @local.length
       @_onComplete args
     @
 
   _getCurrentActor: (args)->
     actor = @_src[@local.index]
-    if actor is Junc.serial or actor is Junc.parallel
-      actor = actor.apply Junc, args
-      while args.length
-        args.pop()
+#TODO disable dynamic construction
+#    if actor is Junc.serial or actor is Junc.parallel
+#      actor = actor.apply Junc, args
+#      while args.length
+#        args.pop()
     @_dst[@local.index] = actor
     actor
 
   _act: (actor, args)->
     actor.onComplete = @next
     super actor, args
+
+class ParallelActor extends GroupActor
+
+  constructor: (actors)->
+    super actors
+
+  start: (args...)->
+    super()
+    @_storage = []
+    if @local.index < @local.length
+      @_act args
+      @_onStart()
+    @
+
+  next: (i, args...)=>
+    @_storage[i] = args
+    setTimeout (=>
+      @local.index++
+      @root.global.index++
+      if @local.index >= @local.length
+        @local.index = @local.length
+        @_onComplete @_storage
+    ), 0
+    @
+
+  _act: (args)->
+    for actor, i in @_src
+      actor.onComplete = do (i)=>
+        (args...)=>
+          args.unshift i
+          @next.apply @, args
+      super actor, args
 
 class RepeatActor extends SerialActor
 
@@ -203,40 +248,59 @@ class RepeatActor extends SerialActor
   _reset: ->
     super()
     @repeat =
-    index: 0
-    length: @_src.length
+      index : 0
+      length: @_src.length
 
-class ParallelActor extends GroupActor
+class EachActor extends Actor
 
-  constructor: (actors)->
-    super actors
-    @argsStorage = []
-
-  start: (args...)->
+  constructor: (@_actor)->
     super()
-    if @local.index < @local.length
-      @_act args
-      @_onStart()
+
+  start: (@_array)->
+    super()
+    @_storage = []
+    @_act()
+    @_onStart()
     @
 
-  next: (i, args...)=>
-    @argsStorage[i] = args
-    setTimeout (=>
-      @local.index++
+  _reset: ->
+    super()
+    @_dst = []
+    @local =
+      index : 0
+      length: @_array.length
+    if @ is @root
+      @global.index = 0
+    @_actor._reset?()
+    return
+
+  next: (args...)=>
+    @_storage[@local.index] = args
+    @local.index++
+    if @_actor instanceof GroupActor
+      @global.index = @root.global.index
+    else
       @root.global.index++
-      if @local.index >= @local.length
-        @local.index = @local.length
-        @_onComplete @argsStorage
-    ), 0
+    if @local.index < @local.length
+      @_act()
+    else if @local.index is @local.length
+      @_onComplete @_storage
     @
 
-  _act: (args)->
-    for actor, i in @_src
-      actor.onComplete = do (i)=>
-        (args...)=>
-          args.unshift i
-          @next.apply @, args
-      super actor, args
+  _act: ->
+    @_actor.onComplete = @next
+    @_actor.root = @root
+    @_actor.skip = =>
+      @local.index = @local.length
+      @_onComplete()
+    unless @_actor instanceof RepeatActor
+      @_actor.repeatRoot = @repeatRoot
+    @_actor.global = @global
+    @_actor.repeat = @repeatRoot?.repeat
+    unless @_actor instanceof GroupActor
+      @_actor.local = @local
+    @_actor.start.call @_actor, @_array[@local.index], @local.index, @_array
+    return
 
 #if BROWSER
 class EasingActor extends Actor
@@ -500,14 +564,14 @@ class Easing
       _s = s
       t /= d
       c * t * t * ((_s + 1) * t - _s) + b
-  @easeInBack: Easing.easeInBackWith()
+  @easeInBack    : Easing.easeInBackWith()
 
   @easeOutBackWith: (s = 1.70158)->
     (t, b, c, d)->
       _s = s
       t = t / d - 1
       c * (t * t * ((_s + 1) * t + _s) + 1) + b
-  @easeOutBack: @easeOutBackWith()
+  @easeOutBack    : @easeOutBackWith()
 
   @easeInOutBackWith: (s = 1.70158)->
     (t, b, c, d)->
@@ -518,7 +582,7 @@ class Easing
       else
         t -= 2
         c / 2 * (t * t * ((_s + 1) * t + _s) + 2) + b
-  @easeInOutBack: @easeInOutBackWith()
+  @easeInOutBack    : @easeInOutBackWith()
 
   @easeOutInBackWith: (s = 1.70158)->
     (t, b, c, d)->
@@ -528,7 +592,7 @@ class Easing
         c / 2 * (t * t * ((_s + 1) * t + _s) + 1) + b
       else
         c / 2 * (t * t * ((_s + 1) * t - _s) + 1) + b
-  @easeOutInBack: @easeOutInBackWith()
+  @easeOutInBack    : @easeOutInBackWith()
 
   @easeInBounce: (t, b, c, d)->
     t = 1 - t / d
@@ -646,7 +710,7 @@ class Easing
       else
         s = _p / _PI_D * _asin(c / _a)
       -_a * _pow(2, 10 * t) * _sin((t * d - s) * _PI_D / _p) + b
-  @easeInElastic: @easeInElasticWith()
+  @easeInElastic    : @easeInElasticWith()
 
   @easeOutElasticWith: (a = 0, p = 0)->
     (t, b, c, d)->
@@ -661,7 +725,7 @@ class Easing
       else
         s = _p / _PI_D * _asin(c / _a)
       _a * _pow(2, -10 * t) * _sin((t * d - s) * _PI_D / _p) + b + c
-  @easeOutElastic: @easeOutElasticWith()
+  @easeOutElastic    : @easeOutElasticWith()
 
   @easeInOutElasticWith: (a = 0, p = 0)->
     (t, b, c, d)->
@@ -679,7 +743,7 @@ class Easing
         -_a / 2 * _pow(2, 10 * t) * _sin((t * d - s) * _PI_D / _p) + b
       else
         _a / 2 * _pow(2, -10 * t) * _sin((t * d - s) * _PI_D / _p) + b + c
-  @easeInOutElastic: @easeInOutElasticWith()
+  @easeInOutElastic    : @easeInOutElasticWith()
 
   @easeOutInElasticWith: (a = 0, p = 0)->
     (t, b, c, d)->
@@ -699,7 +763,7 @@ class Easing
       else
         t -= 2
         -_a * _pow(2, 10 * t) * _sin((t * d - s) * _PI_D / _p) + b + c
-  @easeOutInElastic: @easeOutInElasticWith()
+  @easeOutInElastic    : @easeOutInElasticWith()
 #endif
 
 #if BROWSER
