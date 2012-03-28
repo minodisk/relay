@@ -51,11 +51,6 @@ class Junc
     else
       new ParallelEachActor actor
 
-  @repeat: (actor, repeatCount)->
-    if (len = arguments.length) isnt 2
-      throw new TypeError "Junc.repeat() takes exactly 2 arguments (#{len} given)"
-    new RepeatActor actor, repeatCount
-
   #if BROWSER
   @tween : (target, src, dst, duration = 1000, easing = Easing.linear)->
     new EasingActor target, src, dst, duration, easing
@@ -159,10 +154,7 @@ class GroupActor extends Actor
     actor.skip = =>
       @local.index = @local.length
       @_onComplete()
-    unless actor instanceof RepeatActor
-      actor.repeatRoot = @repeatRoot
     actor.global = @global
-    actor.repeat = @repeatRoot?.repeat
     unless actor instanceof GroupActor
       actor.local = @local
     actor.start.apply actor, args
@@ -270,25 +262,6 @@ class ParallelEachActor extends ParallelActor
 
   _act: (actor, args, i)->
     super actor, [args[i]]
-
-class RepeatActor extends SerialActor
-
-  constructor: (actor, repeatCount)->
-    actors = []
-    while repeatCount--
-      actors.push actor
-    super actors
-    @repeatRoot = @
-
-  next: ->
-    @repeat.index++
-    super()
-
-  _reset: ->
-    super()
-    @repeat =
-      index : 0
-      length: @_actors.length
 
 #if BROWSER
 class EasingActor extends Actor
