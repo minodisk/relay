@@ -43,7 +43,7 @@ class Junc
       actors = if arguments.length > 0 then _slice.call(arguments, 0) else []
     new ParallelActor actors
 
-  @each: (actor, isSerial = false)->
+  @each : (actor, isSerial = false)->
     if (len = arguments.length) isnt 1 and len isnt 2
       throw new TypeError "Junc.each() takes exactly 2 arguments (#{len} given)"
     if isSerial
@@ -52,7 +52,7 @@ class Junc
       new ParallelEachActor actor
 
   #if BROWSER
-  @tween : (target, src, dst, duration = 1000, easing = Easing.linear)->
+  @tween: (target, src, dst, duration = 1000, easing = Easing.linear)->
     new EasingActor target, src, dst, duration, easing
 
   @to: (target, dst, duration = 1000, easing = Easing.linear)->
@@ -731,16 +731,16 @@ class Easing
 #endif
 
 #if BROWSER
-if module?
-  module.exports = Junc
-else if define?
-  define -> Junc
+junc =
+  Junc                : Junc
+  Easing              : Easing
+  AnimationFrameTicker: AnimationFrameTicker
+if define?
+  define -> junc
 else if window?
   unless window.mn? then window.mn = {}
   unless window.mn.dsk? then window.mn.dsk = {}
-  window.mn.dsk.Junc = Junc
-  window.mn.dsk.Easing = Easing
-  window.mn.dsk.AnimationFrameTicker = AnimationFrameTicker
+  window.mn.dsk.junc = junc
 #else
 module.exports = Junc
 #endif
