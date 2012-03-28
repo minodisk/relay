@@ -207,7 +207,13 @@ class ParallelActor extends GroupActor
     super()
     @_storage = []
     if @local.index < @local.length
-      @_act args
+      for actor, i in @_actors
+        actor.onComplete = do (i)=>
+          (args...)=>
+            args.unshift i
+            @next.apply @, args
+        if @local.index < @local.length
+          @_act actor, args, i
       @_onStart()
     @
 
@@ -222,71 +228,23 @@ class ParallelActor extends GroupActor
     ), 0
     @
 
-  _act: (args)->
-    for actor, i in @_actors
-      actor.onComplete = do (i)=>
-        (args...)=>
-          args.unshift i
-          @next.apply @, args
-      if @local.index < @local.length
-        super actor, args
-    return
-
-class EachActor extends Actor
+class ParallelEachActor extends ParallelActor
 
   constructor: (actor)->
-    @__actor = actor.clone()
-    super()
-
-  _reset: ->
-    super()
-    @local =
-      index : 0
-      length: @_args.length
-    if @ is @root
-      @global.index = 0
-    for actor in @_actors
-      actor._reset()
-    return
-
-  _act: GroupActor::_act
-
-class ParallelEachActor extends EachActor
+    super [actor]
 
   clone: ->
-    new ParallelEachActor @__actor
+    new ParallelEachActor @__actors[0]
 
-  start: (@_args)->
+  start: (args)->
     @_actors = []
-    for arg, i in @_args
-      @_actors[i] = @__actor.clone()
-    super()
-    @_storage = []
-    if @local.index < @local.length
-      @_act.apply @
-      @_onStart()
-    @
+    for arg, i in args
+      @_actors[i] = @__actors[0].clone()
+    ParallelEachActor.__super__.start.apply @, args
 
-  next: (i, args...)=>
-    @_storage[i] = args
-    setTimeout (=>
-      @local.index++
-      @root.global.index++
-      if @local.index >= @local.length
-        @local.index = @local.length
-        @_onComplete @_storage
-    ), 0
-    @
+  _act: (actor, args, i)->
+    super actor, [args[i]]
 
-  _act: ->
-    for actor, i in @_actors
-      actor.onComplete = do (i)=>
-        (args...)=>
-          args.unshift i
-          @next.apply @, args
-      if @local.index < @local.length
-        super actor, [@_args[i]]
-    return
 ###
 class SerialEachActor extends EachActor
 
