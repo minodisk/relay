@@ -1,21 +1,21 @@
 fs = require 'fs'
 Junc = require '../lib/browser/junc'
 
+getTime = ->
+  new Date().getTime()
+
 module.exports =
 
 'test phase':
-  'func(sync)': (test)->
-    Junc.func(
-      ->
-        test.strictEqual @local, undefined
-        test.strictEqual @global.index, undefined
-        @next()
-    ).complete(
-      ->
-        test.strictEqual @local, undefined
-        test.strictEqual @global.index, undefined
-        test.done()
-        @next()
+  'func sync': (test)->
+    Junc.func(->
+      test.strictEqual @local, undefined
+      test.strictEqual @global.index, undefined
+      @next()
+    ).complete(->
+      test.strictEqual @local, undefined
+      test.strictEqual @global.index, undefined
+      test.done()
     ).start()
   'func(async)': (test)->
     Junc.func(
@@ -275,6 +275,7 @@ module.exports =
           test.done()
       ).start()
 
+###
   repeat:
     sync: (test)->
       counter = 0
@@ -403,6 +404,7 @@ module.exports =
           test.strictEqual @global.index, 15
           test.done()
       ).start()
+###
 
 'test nesting':
   serial:
@@ -658,6 +660,8 @@ module.exports =
           test.strictEqual @global.num, 25
           test.done()
       ).start()
+
+    ###
     deep: (test)->
       Junc.serial(
         Junc.func(->
@@ -738,6 +742,7 @@ module.exports =
           test.deepEqual @global.d, [514, 'baz_______________baz']
           test.done()
       ).start()
+###
 
   parallel:
     sync: (test)->
@@ -929,19 +934,178 @@ module.exports =
         test.deepEqual results1, ['e', 'f']
         test.done()
       ).start 'a', 'b'
+    serial: (test)->
+      Junc.parallel(
+        Junc.serial(
+          Junc.func((a, b)->
+            test.strictEqual a, 'a'
+            test.strictEqual b, 'b'
+            @next 'c', 'd'
+          )
+          Junc.func((c, d)->
+            test.strictEqual c, 'c'
+            test.strictEqual d, 'd'
+            @next 'e', 'f'
+          )
+        )
+        Junc.serial(
+          Junc.func((a, b)->
+            test.strictEqual a, 'a'
+            test.strictEqual b, 'b'
+            @next 'g', 'h'
+          )
+          Junc.func((g, h)->
+            test.strictEqual g, 'g'
+            test.strictEqual h, 'h'
+            @next 'i', 'j'
+          )
+        )
+      ).complete((results0, results1)->
+        test.deepEqual results0, ['e', 'f']
+        test.deepEqual results1, ['i', 'j']
+        test.done()
+      ).start 'a', 'b'
 
-  each:
+  clone:
+    func: (test)->
+      src = Junc.func(->
+        setTimeout =>
+          @next()
+        , 100
+      )
+      dst = src.clone()
+      src.complete(->
+        test.strictEqual dst.onComplete, undefined
+        test.done()
+      ).start()
+    serial: (test)->
+      src = Junc.serial(
+        Junc.func(->
+          setTimeout =>
+            @next()
+          , 100
+        )
+      )
+      dst = src.clone()
+      src.complete(->
+        test.strictEqual dst.onComplete, undefined
+        test.strictEqual dst.local, undefined
+        test.strictEqual dst.global, undefined
+        test.done()
+      ).start()
+    parallel: (test)->
+      src = Junc.func(->
+        setTimeout =>
+          @next()
+        , 100
+      )
+      dst = src.clone()
+      Junc.parallel(src, dst).complete(->
+        test.done()
+      ).start()
+    'parallel serial': (test)->
+      src = Junc.serial(
+        Junc.func(->
+          setTimeout =>
+            @next()
+          , 100
+        )
+        Junc.func(->
+          setTimeout =>
+            @next()
+          , 100
+        )
+      )
+      dst = src.clone()
+      Junc.parallel(src, dst).complete(->
+        test.done()
+      ).start()
+
+  'parallel each':
     func: (test)->
       counter = 0
       array = ['a', 'b']
+      time = getTime()
+      Junc.each(
+        Junc.func((elem)->
+          test.strictEqual elem, array[counter++]
+          setTimeout =>
+            @next elem, elem + 'c'
+          , 100
+        )
+      ).complete((results0, results1)->
+        console.log getTime() - time, 'will be near 100'
+        test.deepEqual results0, ['a', 'ac']
+        test.deepEqual results1, ['b', 'bc']
+        test.done()
+      ).start array
+
+    serial: (test)->
+      counter = 0
+      array = ['a', 'b']
+      time = getTime()
+      Junc.each(
+        Junc.serial(
+          Junc.func((elem)->
+            @local[elem] = true
+            test.strictEqual elem, array[counter++]
+            setTimeout =>
+              @next elem, elem + 'c'
+            , 100
+          )
+          Junc.func((str0, str1)->
+            setTimeout =>
+              @next str0, str1, str1 + 'd'
+            , 200
+          )
+        )
+      ).complete((results0, results1)->
+        console.log getTime() - time, 'will be near 300'
+        test.deepEqual results0, ['a', 'ac', 'acd']
+        test.deepEqual results1, ['b', 'bc', 'bcd']
+        test.done()
+      ).start array
+
+    parallel: (test)->
+      counter = 0
+      array = ['a', 'b']
+      time = getTime()
+      Junc.each(
+        Junc.parallel(
+          Junc.func((elem, i, arr)->
+            setTimeout =>
+              @next elem, elem + 'c'
+            , 100
+          )
+          Junc.func((elem, i, arr)->
+            setTimeout =>
+              @next elem, elem + 'd'
+            , 200
+          )
+        )
+      ).complete((results0, results1)->
+        console.log getTime() - time, 'will be near 200'
+        test.deepEqual results0, [['a', 'ac'], ['a', 'ad']]
+        test.deepEqual results1, [['b', 'bc'], ['b', 'bd']]
+        test.done()
+      ).start array
+###
+  'serial each':
+    func: (test)->
+      counter = 0
+      array = ['a', 'b']
+      time = getTime()
       Junc.each(
         Junc.func((elem, i, arr)->
           test.strictEqual elem, array[counter]
           test.strictEqual i, counter++
           test.deepEqual arr, array
-          @next elem, elem + 'c'
-        )
+          setTimeout =>
+            @next elem, elem + 'c'
+          , 100
+        ), true
       ).complete((results0, results1)->
+        console.log getTime() - time, 'will be near 200'
         test.deepEqual results0, ['a', 'ac']
         test.deepEqual results1, ['b', 'bc']
         test.done()
@@ -949,7 +1113,7 @@ module.exports =
     serial: (test)->
       counter = 0
       array = ['a', 'b']
-      time = new Date().getTime()
+      time = getTime()
       Junc.each(
         Junc.serial(
           Junc.func((elem, i, arr)->
@@ -965,94 +1129,65 @@ module.exports =
               @next str0, str1, str1 + 'd'
             , 200
           )
-        )
+        ), true
       ).complete((results0, results1)->
+        console.log getTime() - time, 'will be near 600'
         test.deepEqual results0, ['a', 'ac', 'acd']
         test.deepEqual results1, ['b', 'bc', 'bcd']
         test.done()
       ).start array
-
     parallel: (test)->
       counter = 0
       array = ['a', 'b']
-      time = new Date().getTime()
+      time = getTime()
       Junc.each(
         Junc.parallel(
           Junc.func((elem, i, arr)->
-            test.strictEqual elem, array[counter]
-            test.strictEqual i, counter
-            test.deepEqual arr, array
             setTimeout =>
               @next elem, elem + 'c'
             , 100
           )
           Junc.func((elem, i, arr)->
-            test.strictEqual elem, array[counter]
-            test.strictEqual i, counter++
-            test.deepEqual arr, array
             setTimeout =>
               @next elem, elem + 'd'
             , 200
           )
+        ), true
+      ).complete((results0, results1)->
+        console.log getTime() - time, 'will be near 400'
+        test.deepEqual results0, [['a', 'ac'], ['a', 'ad']]
+        test.deepEqual results1, [['b', 'bc'], ['b', 'bd']]
+        test.done()
+      ).start array
+
+  parallels:
+    func: (test)->
+      counter = 0
+      array = ['a', 'b']
+      time = new Date().getTime()
+      Junc.parallels(
+        Junc.func((elem, i, arr)->
+          test.strictEqual elem, array[counter]
+          test.strictEqual i, counter
+          test.deepEqual arr, array
+          setTimeout =>
+            @next elem, elem + 'c'
+          , 100
+        )
+        Junc.func((elem, i, arr)->
+          test.strictEqual elem, array[counter]
+          test.strictEqual i, counter++
+          test.deepEqual arr, array
+          setTimeout =>
+            @next elem, elem + 'd'
+          , 200
         )
       ).complete((results0, results1)->
         test.deepEqual results0, [['a', 'ac'], ['a', 'ad']]
         test.deepEqual results1, [['b', 'bc'], ['b', 'bd']]
         test.done()
       ).start array
-###
-'test dynamic construction':
-  serial: (test)->
-    Junc.serial(
-      Junc.func(->
-          @global.str = 'a'
-          @next Junc.func(->
-              @global.str += 'b'
-              @next()
-          ), Junc.func(->
-              @global.str += 'c'
-              @next()
-          ), Junc.func(->
-              @global.str += 'd'
-              @next()
-          )
-      )
-      Junc.serial
-      Junc.func(->
-          @global.str += 'e'
-          @next()
-      )
-    ).complete(
-      ->
-        test.strictEqual @global.str, 'abcde'
-        test.done()
-    ).start()
-  parallel: (test)->
-    Junc.serial(
-      Junc.func(->
-          @global.value = 0
-          @next Junc.func(->
-              @global.value += 1
-              @next()
-          ), Junc.func(->
-              @global.value += 2
-              @next()
-          ), Junc.func(->
-              @global.value += 3
-              @next()
-          )
-      )
-      Junc.parallel
-      Junc.func(->
-          @global.value *= 10
-          @next()
-      )
-    ).complete(
-      ->
-        test.strictEqual @global.value, 60
-        test.done()
-    ).start()
-###
+
 'test skip':
   serial: (test)->
     Junc.serial(

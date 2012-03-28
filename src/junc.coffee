@@ -24,37 +24,40 @@ _isArray = Array.isArray
 class Junc
 
   @func: (func)->
-    if (len = arguments.length) isnt (req = 1)
-      throw new TypeError "Junc.func() takes exactly #{req} argument (#{len} given)"
+    if (len = arguments.length) isnt 1
+      throw new TypeError "Junc.func() takes exactly 1 argument (#{len} given)"
     new FunctionActor func
 
   @wait: (delay)->
-    if (len = arguments.length) isnt (req = 1)
-      throw new TypeError "Junc.wait() takes exactly #{req} argument (#{len} given)"
+    if (len = arguments.length) isnt 1
+      throw new TypeError "Junc.wait() takes exactly 1 argument (#{len} given)"
     new WaitActor delay
 
-  @serial: (actors...)->
-    if _isArray(actors[0])
-      actors = actors[0]
+  @serial: (actors)->
+    unless _isArray actors
+      actors = if arguments.length > 0 then _slice.call(arguments, 0) else []
     new SerialActor actors
 
-  @parallel: (actors...)->
-    if _isArray(actors[0])
-      actors = actors[0]
+  @parallel: (actors)->
+    unless _isArray actors
+      actors = if arguments.length > 0 then _slice.call(arguments, 0) else []
     new ParallelActor actors
 
+  @each: (actor, isSerial = false)->
+    if (len = arguments.length) isnt 1 and len isnt 2
+      throw new TypeError "Junc.each() takes exactly 2 arguments (#{len} given)"
+    if isSerial
+      new SerialEachActor actor
+    else
+      new ParallelEachActor actor
+
   @repeat: (actor, repeatCount)->
-    if (len = arguments.length) isnt (req = 2)
-      throw new TypeError "Junc.repeat() takes exactly #{req} argument (#{len} given)"
+    if (len = arguments.length) isnt 2
+      throw new TypeError "Junc.repeat() takes exactly 2 arguments (#{len} given)"
     new RepeatActor actor, repeatCount
 
-  @each : (actor)->
-    if (len = arguments.length) isnt (req = 1)
-      throw new TypeError "Junc.each() takes exactly #{req} argument (#{len} given)"
-    new EachActor actor
-
   #if BROWSER
-  @tween: (target, src, dst, duration = 1000, easing = Easing.linear)->
+  @tween : (target, src, dst, duration = 1000, easing = Easing.linear)->
     new EasingActor target, src, dst, duration, easing
 
   @to: (target, dst, duration = 1000, easing = Easing.linear)->
@@ -67,14 +70,10 @@ class Actor
     @root = @
 
   start: ->
-    if @_running
-      @stop()
     @_reset()
-    @_running = true
     @
 
   stop: ->
-    @_running = false
     @
 
   complete: (callback)->
@@ -89,121 +88,120 @@ class Actor
     @onStart? @
 
   _onComplete: (args)->
-    if @_running
-      @_running = false
-      @onComplete?.apply @, args
+    @onComplete?.apply @, args
 
 class FunctionActor extends Actor
 
-  constructor: (@func)->
+  constructor: (@_func)->
     super()
-    if typeof @func isnt 'function'
+    if typeof @_func isnt 'function'
       throw new TypeError 'new FunctionActor(func) func must be inspected Function.'
+
+  clone: ->
+    new FunctionActor @_func
 
   start: (args...)->
     super()
-    @func.apply @, args
+    @_func.apply @, args
     @
 
   next: (args...)=>
     @_onComplete args
     @
 
+  _onComplete: (args)->
+    super args
+    return
+
 class WaitActor extends FunctionActor
 
-  constructor: (delay)->
-    if isNaN delay
+  constructor: (@_delay)->
+    if isNaN @_delay
       throw new TypeError 'new WaitActor(delay) delay must be inspected Number.'
     super (->
-      setTimeout @next, delay
+      setTimeout @next, @_delay
     ), null, true
+
+  clone: ->
+    new WaitActor @_delay
 
 class GroupActor extends Actor
 
   constructor: (actors)->
     super()
-    for actor in actors
-      #TODO disable dynamic construction
-      unless actor instanceof Actor #or actor is Junc.serial or actor is Junc.parallel
+    @_actors = []
+    @__actors = []
+    for actor, i in actors
+      unless actor instanceof Actor
         throw new TypeError 'Arguments[0] of GroupActor must be inspected Array of Actor.'
-    @_src = actors
+      @_actors[i] = actor.clone()
+      @__actors[i] = actor.clone()
 
   stop: ->
     super()
-    for actor in @_dst
+    for actor in @_actors
       if actor instanceof Actor then actor.stop()
     @
 
   _reset: ->
     super()
-    @_dst = []
     @local =
       index : 0
-      length: @_src.length
+      length: @_actors.length
     if @ is @root
       @global.index = 0
-    for actor in @_src
-      actor._reset?()
+    for actor in @_actors
+      actor._reset()
     return
 
   _act: (actor, args)->
-    #TODO refactor this comparing
-    if @local.index < @local.length
-      actor.root = @root
-      actor.skip = =>
-        @local.index = @local.length
-        @_onComplete()
-      unless actor instanceof RepeatActor
-        actor.repeatRoot = @repeatRoot
-      actor.global = @global
-      actor.repeat = @repeatRoot?.repeat
-      unless actor instanceof GroupActor
-        actor.local = @local
-      actor.start.apply actor, args
+    actor.root = @root
+    actor.skip = =>
+      @local.index = @local.length
+      @_onComplete()
+    unless actor instanceof RepeatActor
+      actor.repeatRoot = @repeatRoot
+    actor.global = @global
+    actor.repeat = @repeatRoot?.repeat
+    unless actor instanceof GroupActor
+      actor.local = @local
+    actor.start.apply actor, args
+    return
 
 class SerialActor extends GroupActor
 
-  constructor: (actors)->
-    super actors
+  clone: ->
+    new SerialActor @__actors
 
   start: (args...)->
     super()
     if @local.index < @local.length
-      @_act @_getCurrentActor(args), args
+      @_act @_actors[@local.index], args
       @_onStart()
     @
 
   next: (args...)=>
-    actor = @_dst[@local.index]
+    actor = @_actors[@local.index]
     @local.index++
     if actor instanceof GroupActor
       @global.index = @root.global.index
     else
       @root.global.index++
     if @local.index < @local.length
-      @_act @_getCurrentActor(args), args
+      @_act @_actors[@local.index], args
     else if @local.index is @local.length
       @_onComplete args
     @
 
-  _getCurrentActor: (args)->
-    actor = @_src[@local.index]
-#TODO disable dynamic construction
-#    if actor is Junc.serial or actor is Junc.parallel
-#      actor = actor.apply Junc, args
-#      while args.length
-#        args.pop()
-    @_dst[@local.index] = actor
-    actor
-
   _act: (actor, args)->
     actor.onComplete = @next
     super actor, args
+    return
 
 class ParallelActor extends GroupActor
 
-  constructor: (actors)->
-    super actors
+  clone: ->
+    new ParallelActor @__actors
 
   start: (args...)->
     super()
@@ -225,13 +223,101 @@ class ParallelActor extends GroupActor
     @
 
   _act: (args)->
-    for actor, i in @_src
+    for actor, i in @_actors
       actor.onComplete = do (i)=>
         (args...)=>
           args.unshift i
           @next.apply @, args
-      super actor, args
+      if @local.index < @local.length
+        super actor, args
+    return
 
+class EachActor extends Actor
+
+  constructor: (actor)->
+    @__actor = actor.clone()
+    super()
+
+  _reset: ->
+    super()
+    @local =
+      index : 0
+      length: @_args.length
+    if @ is @root
+      @global.index = 0
+    for actor in @_actors
+      actor._reset()
+    return
+
+  _act: GroupActor::_act
+
+class ParallelEachActor extends EachActor
+
+  clone: ->
+    new ParallelEachActor @__actor
+
+  start: (@_args)->
+    @_actors = []
+    for arg, i in @_args
+      @_actors[i] = @__actor.clone()
+    super()
+    @_storage = []
+    if @local.index < @local.length
+      @_act.apply @
+      @_onStart()
+    @
+
+  next: (i, args...)=>
+    @_storage[i] = args
+    setTimeout (=>
+      @local.index++
+      @root.global.index++
+      if @local.index >= @local.length
+        @local.index = @local.length
+        @_onComplete @_storage
+    ), 0
+    @
+
+  _act: ->
+    for actor, i in @_actors
+      actor.onComplete = do (i)=>
+        (args...)=>
+          args.unshift i
+          @next.apply @, args
+      if @local.index < @local.length
+        super actor, [@_args[i]]
+    return
+###
+class SerialEachActor extends EachActor
+
+  clone: ->
+    new SerialEachActor @_actor
+
+  start: (@_array)->
+    super()
+    @_storage = []
+    @_act()
+    @_onStart()
+    @
+
+  next: (args...)=>
+    @_storage[@local.index] = args
+    @local.index++
+    if @_actor instanceof GroupActor
+      @global.index = @root.global.index
+    else
+      @root.global.index++
+    if @local.index < @local.length
+      @_act()
+    else if @local.index is @local.length
+      @_onComplete @_storage
+    @
+
+  _act: ->
+    @_actor.onComplete = @next
+    super @_actor, [@_array[@local.index], @local.index, @_array]
+    return
+###
 class RepeatActor extends SerialActor
 
   constructor: (actor, repeatCount)->
@@ -249,58 +335,7 @@ class RepeatActor extends SerialActor
     super()
     @repeat =
       index : 0
-      length: @_src.length
-
-class EachActor extends Actor
-
-  constructor: (@_actor)->
-    super()
-
-  start: (@_array)->
-    super()
-    @_storage = []
-    @_act()
-    @_onStart()
-    @
-
-  _reset: ->
-    super()
-    @_dst = []
-    @local =
-      index : 0
-      length: @_array.length
-    if @ is @root
-      @global.index = 0
-    @_actor._reset?()
-    return
-
-  next: (args...)=>
-    @_storage[@local.index] = args
-    @local.index++
-    if @_actor instanceof GroupActor
-      @global.index = @root.global.index
-    else
-      @root.global.index++
-    if @local.index < @local.length
-      @_act()
-    else if @local.index is @local.length
-      @_onComplete @_storage
-    @
-
-  _act: ->
-    @_actor.onComplete = @next
-    @_actor.root = @root
-    @_actor.skip = =>
-      @local.index = @local.length
-      @_onComplete()
-    unless @_actor instanceof RepeatActor
-      @_actor.repeatRoot = @repeatRoot
-    @_actor.global = @global
-    @_actor.repeat = @repeatRoot?.repeat
-    unless @_actor instanceof GroupActor
-      @_actor.local = @local
-    @_actor.start.call @_actor, @_array[@local.index], @local.index, @_array
-    return
+      length: @_actors.length
 
 #if BROWSER
 class EasingActor extends Actor
@@ -308,14 +343,17 @@ class EasingActor extends Actor
   @_getStyle: (element)->
     getComputedStyle(element, '') or element.currentStyle
 
-  constructor: (target, @src, @dst, @duration, @easing)->
+  constructor: (@_target, @src, @dst, @duration, @easing)->
     super()
-    if window? and target instanceof window.HTMLElement
-      @target = target.style
-      @object = EasingActor._getStyle target
+    if window? and @_target instanceof window.HTMLElement
+      @target = @_target.style
+      @object = EasingActor._getStyle @_target
     else
-      @target = @object = target
+      @target = @object = @_target
     @_requestAnimationFrame = AnimationFrameTicker.getInstance()
+
+  clone: ->
+    new EasingActor @_target, @src, @dst, @duration, @easing
 
   start: ->
     super()
