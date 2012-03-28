@@ -1021,7 +1021,7 @@ module.exports =
         test.done()
       ).start()
 
-  'parallel each':
+  'each (runs parallely)':
     func: (test)->
       counter = 0
       array = ['a', 'b']
@@ -1039,7 +1039,6 @@ module.exports =
         test.deepEqual results1, ['b', 'bc']
         test.done()
       ).start array
-
     serial: (test)->
       counter = 0
       array = ['a', 'b']
@@ -1065,7 +1064,6 @@ module.exports =
         test.deepEqual results1, ['b', 'bc', 'bcd']
         test.done()
       ).start array
-
     parallel: (test)->
       counter = 0
       array = ['a', 'b']
@@ -1089,17 +1087,15 @@ module.exports =
         test.deepEqual results1, [['b', 'bc'], ['b', 'bd']]
         test.done()
       ).start array
-###
-  'serial each':
+
+  'each (runs serially)':
     func: (test)->
       counter = 0
       array = ['a', 'b']
       time = getTime()
       Junc.each(
-        Junc.func((elem, i, arr)->
-          test.strictEqual elem, array[counter]
-          test.strictEqual i, counter++
-          test.deepEqual arr, array
+        Junc.func((elem)->
+          test.strictEqual elem, array[counter++]
           setTimeout =>
             @next elem, elem + 'c'
           , 100
@@ -1116,10 +1112,8 @@ module.exports =
       time = getTime()
       Junc.each(
         Junc.serial(
-          Junc.func((elem, i, arr)->
-            test.strictEqual elem, array[counter]
-            test.strictEqual i, counter++
-            test.deepEqual arr, array
+          Junc.func((elem)->
+            test.strictEqual elem, array[counter++]
             setTimeout =>
               @next elem, elem + 'c'
             , 100
@@ -1160,34 +1154,7 @@ module.exports =
         test.done()
       ).start array
 
-  parallels:
-    func: (test)->
-      counter = 0
-      array = ['a', 'b']
-      time = new Date().getTime()
-      Junc.parallels(
-        Junc.func((elem, i, arr)->
-          test.strictEqual elem, array[counter]
-          test.strictEqual i, counter
-          test.deepEqual arr, array
-          setTimeout =>
-            @next elem, elem + 'c'
-          , 100
-        )
-        Junc.func((elem, i, arr)->
-          test.strictEqual elem, array[counter]
-          test.strictEqual i, counter++
-          test.deepEqual arr, array
-          setTimeout =>
-            @next elem, elem + 'd'
-          , 200
-        )
-      ).complete((results0, results1)->
-        test.deepEqual results0, [['a', 'ac'], ['a', 'ad']]
-        test.deepEqual results1, [['b', 'bc'], ['b', 'bd']]
-        test.done()
-      ).start array
-
+###
 'test skip':
   serial: (test)->
     Junc.serial(

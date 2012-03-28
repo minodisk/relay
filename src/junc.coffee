@@ -198,6 +198,32 @@ class SerialActor extends GroupActor
     super actor, args
     return
 
+class SerialEachActor extends SerialActor
+
+  constructor: (actor)->
+    super [actor]
+
+  clone: ->
+    new SerialEachActor @__actors[0]
+
+  start: (@_args)->
+    @_actors = []
+    for arg, i in @_args
+      @_actors[i] = @__actors[0].clone()
+    @_storage = []
+    super()
+
+  next: (args...)=>
+    @_storage[@local.index] = args
+    super()
+
+  _onComplete: ->
+    super @_storage
+
+  _act: (actor)->
+    super actor, [@_args[@local.index]]
+    return
+
 class ParallelActor extends GroupActor
 
   clone: ->
@@ -245,37 +271,6 @@ class ParallelEachActor extends ParallelActor
   _act: (actor, args, i)->
     super actor, [args[i]]
 
-###
-class SerialEachActor extends EachActor
-
-  clone: ->
-    new SerialEachActor @_actor
-
-  start: (@_array)->
-    super()
-    @_storage = []
-    @_act()
-    @_onStart()
-    @
-
-  next: (args...)=>
-    @_storage[@local.index] = args
-    @local.index++
-    if @_actor instanceof GroupActor
-      @global.index = @root.global.index
-    else
-      @root.global.index++
-    if @local.index < @local.length
-      @_act()
-    else if @local.index is @local.length
-      @_onComplete @_storage
-    @
-
-  _act: ->
-    @_actor.onComplete = @next
-    super @_actor, [@_array[@local.index], @local.index, @_array]
-    return
-###
 class RepeatActor extends SerialActor
 
   constructor: (actor, repeatCount)->
