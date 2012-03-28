@@ -13,12 +13,12 @@ Function
 
 fs = require 'fs'
 path = require 'path'
-Flow = require 'nestableflow'
 coffee = require 'coffee-script'
 uglifyjs = require 'uglify-js'
 jsp = uglifyjs.parser
 pro = uglifyjs.uglify
 { spawn } = require 'child_process'
+{ Junc } = require 'junc'
 
 requested = false
 
@@ -45,45 +45,49 @@ padLeft = (num, length = 2, pad = '0')->
   str
 
 startCompile = ->
-  node = ''
-  browser = ''
-  flow = Flow.serial(
-    (flow)->
+  Junc.serial(
+    Junc.func(->
       console.log "#{timeStamp()} Start compiling ..."
-      flow.next()
-    , (flow)->
-      fs.readFile 'src/junc.coffee', 'utf8', flow.next
-    , (flow, code)->
-      node = coffee.compile code.replace(/#if BROWSER([\s\S]*?)(#else[\s\S]*?)?#endif/g, (matched, $1, $2, offset, source)->
+      @next()
+    )
+    Junc.func(->
+      fs.readFile 'src/junc.coffee', 'utf8', @next
+    )
+    Junc.func((err, code)->
+      @global.node = coffee.compile code.replace(
+        /#if BROWSER([\s\S]*?)(#else[\s\S]*?)?#endif/g,
+        (matched, $1, $2, offset, source)->
           if $2? then $2 else ''
       )
-      browser = coffee.compile code.replace(/#if BROWSER([\s\S]*?)(#else[\s\S]*?)?#endif/g, (matched, $1, $2, offset, source)->
+      @global.browser = coffee.compile code.replace(
+        /#if BROWSER([\s\S]*?)(#else[\s\S]*?)?#endif/g,
+        (matched, $1, $2, offset, source)->
           if $1? then $1 else ''
       )
-      flow.next()
-    , Flow.parallel(
-      (flow)->
-        fs.writeFile "lib/node/junc.js", node, flow.next
-      , (flow)->
-        fs.writeFile "lib/browser/junc.js", browser, flow.next
-      , (flow)->
-        ast = jsp.parse browser
+      @next()
+    )
+    Junc.parallel(
+      Junc.func(->
+        fs.writeFile "lib/node/junc.js", @global.node, @next
+      )
+      Junc.func(->
+        fs.writeFile "lib/browser/junc.js", @global.browser, @next
+      )
+      Junc.func(->
+        ast = jsp.parse @global.browser
         ast = pro.ast_mangle ast
         ast = pro.ast_squeeze ast
         uglified = pro.gen_code ast
-        #          beautify    : true
-        #          indent_start: 0
-        #          indent_level: 2
-        fs.writeFile "lib/browser/junc.min.js", uglified, flow.next
+        fs.writeFile "lib/browser/junc.min.js", uglified, @next
+      )
     )
-    , (flow)->
+    Junc.func(->
       console.log "#{ timeStamp() } Complete compiling!"
-      flow.next()
+      @next()
+    )
   )
-  flow.onError = (err)->
-    console.log "Error: #{ err }"
-  flow.onComplete = test
-  flow.start()
+  .complete(test)
+  .start()
 
 test = ->
   console.log "#{timeStamp()} Start testing ..."

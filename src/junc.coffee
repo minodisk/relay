@@ -735,12 +735,15 @@ junc =
   Junc                : Junc
   Easing              : Easing
   AnimationFrameTicker: AnimationFrameTicker
-if define?
+if module?
+  module.exports = junc
+else if define?
   define -> junc
 else if window?
   unless window.mn? then window.mn = {}
   unless window.mn.dsk? then window.mn.dsk = {}
   window.mn.dsk.junc = junc
 #else
-module.exports = Junc
+module.exports =
+  Junc: Junc
 #endif

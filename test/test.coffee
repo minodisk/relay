@@ -1,5 +1,5 @@
 fs = require 'fs'
-Junc = require '../lib/browser/junc'
+{ Junc } = require '../lib/browser/junc'
 
 getTime = ->
   new Date().getTime()
