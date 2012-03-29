@@ -1,6 +1,6 @@
 {
   "name"       :"junc",
-  "version"    :"0.1.3",
+  "version"    :"0.1.4",
   "description":"Asynchronous flow-controll module.",
   "tags"       :["flow-controller"],
   "author"     :"Daisuke MINO <daisuke.mino@gmail.com>",
