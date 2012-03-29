@@ -2,7 +2,7 @@
   "name"       :"junc",
   "version"    :"0.1.4",
   "description":"Asynchronous flow-controll module.",
-  "tags"       :["flow-controller"],
+  "tags"       :["asynchronous control flow step control serial parallel deep nest"],
   "author"     :"Daisuke MINO <daisuke.mino@gmail.com>",
   "license"    :"MIT",
   "main"       :"./lib/node/junc",
