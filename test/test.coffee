@@ -744,8 +744,10 @@ module.exports =
       array = ['a', 'b']
       time = getTime()
       Junc.each(
-        Junc.func((elem)->
-          test.strictEqual elem, array[counter++]
+        Junc.func((elem, i, arr)->
+          test.strictEqual elem, array[counter]
+          test.strictEqual i, counter++
+          test.deepEqual arr, array
           setTimeout =>
             @next elem, elem + 'c'
           , 100
@@ -762,9 +764,10 @@ module.exports =
       time = getTime()
       Junc.each(
         Junc.serial(
-          Junc.func((elem)->
-            @local[elem] = true
-            test.strictEqual elem, array[counter++]
+          Junc.func((elem, i, arr)->
+            test.strictEqual elem, array[counter]
+            test.strictEqual i, counter++
+            test.deepEqual arr, array
             setTimeout =>
               @next elem, elem + 'c'
             , 100
@@ -788,11 +791,17 @@ module.exports =
       Junc.each(
         Junc.parallel(
           Junc.func((elem, i, arr)->
+            test.strictEqual elem, array[counter]
+            test.strictEqual i, counter
+            test.deepEqual arr, array
             setTimeout =>
               @next elem, elem + 'c'
             , 100
           )
           Junc.func((elem, i, arr)->
+            test.strictEqual elem, array[counter]
+            test.strictEqual i, counter++
+            test.deepEqual arr, array
             setTimeout =>
               @next elem, elem + 'd'
             , 200
@@ -811,8 +820,10 @@ module.exports =
       array = ['a', 'b']
       time = getTime()
       Junc.each(
-        Junc.func((elem)->
-          test.strictEqual elem, array[counter++]
+        Junc.func((elem, i, arr)->
+          test.strictEqual elem, array[counter]
+          test.strictEqual i, counter++
+          test.deepEqual arr, array
           setTimeout =>
             @next elem, elem + 'c'
           , 100
@@ -829,8 +840,10 @@ module.exports =
       time = getTime()
       Junc.each(
         Junc.serial(
-          Junc.func((elem)->
-            test.strictEqual elem, array[counter++]
+          Junc.func((elem, i, arr)->
+            test.strictEqual elem, array[counter]
+            test.strictEqual i, counter++
+            test.deepEqual arr, array
             setTimeout =>
               @next elem, elem + 'c'
             , 100
@@ -854,11 +867,17 @@ module.exports =
       Junc.each(
         Junc.parallel(
           Junc.func((elem, i, arr)->
+            test.strictEqual elem, array[counter]
+            test.strictEqual i, counter
+            test.deepEqual arr, array
             setTimeout =>
               @next elem, elem + 'c'
             , 100
           )
           Junc.func((elem, i, arr)->
+            test.strictEqual elem, array[counter]
+            test.strictEqual i, counter++
+            test.deepEqual arr, array
             setTimeout =>
               @next elem, elem + 'd'
             , 200

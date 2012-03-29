@@ -213,7 +213,7 @@ class SerialEachActor extends SerialActor
     super @_storage
 
   _act: (actor)->
-    super actor, [@_args[@local.index]]
+    super actor, [@_args[@local.index], @local.index, @_args]
     return
 
 class ParallelActor extends GroupActor
@@ -261,7 +261,7 @@ class ParallelEachActor extends ParallelActor
     ParallelEachActor.__super__.start.apply @, args
 
   _act: (actor, args, i)->
-    super actor, [args[i]]
+    super actor, [args[i], i, args]
 
 #if BROWSER
 class EasingActor extends Actor
