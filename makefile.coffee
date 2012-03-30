@@ -1,13 +1,5 @@
 ###
-makefile.coffee v0.1.0
-
-Usage
-$ coffee makefile.coffee
-
-Function
-1. Detect change of source file.
-2. Compile CoffeeScript to JavaScript.
-3. Run test.
+makefile.coffee v0.1.2
 ###
 
 fs = require 'fs'
@@ -47,6 +39,14 @@ startCompile = ->
   Junc.serial(
     Junc.func(->
       console.log "#{timeStamp()} Start compiling ..."
+      @next ['node', 'browser']
+    )
+    Junc.each(
+      Junc.func((dirname)->
+        fs.mkdir path.join(DST_DIR, dirname), 0777, @next
+      )
+    )
+    Junc.func(->
       fs.readdir SRC_DIR, @next
     )
     Junc.func((err, files)->
@@ -84,8 +84,17 @@ startCompile = ->
             ]
         )
         Junc.each(
-          Junc.func((file)->
-            fs.writeFile path.join(DST_DIR, file.path), file.code, @next
+          Junc.serial(
+            Junc.func((file)->
+              fs.writeFile path.join(DST_DIR, file.path), file.code, @next
+            )
+            Junc.func((err)->
+              if err?
+                console.log err
+                @skip()
+              else
+                @next()
+            )
           )
         )
       )

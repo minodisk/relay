@@ -21,16 +21,16 @@ _isArray = Array.isArray || (obj)-> Object.prototype.toString.call(obj) is '[obj
 _isArray = Array.isArray
 #endif
 
-class Junc
+class Relay
 
   @func: (func)->
     if (len = arguments.length) isnt 1
-      throw new TypeError "Junc.func() takes exactly 1 argument (#{len} given)"
+      throw new TypeError "Relay.func() takes exactly 1 argument (#{len} given)"
     new FunctionActor func
 
   @wait: (delay)->
     if (len = arguments.length) isnt 1
-      throw new TypeError "Junc.wait() takes exactly 1 argument (#{len} given)"
+      throw new TypeError "Relay.wait() takes exactly 1 argument (#{len} given)"
     new WaitActor delay
 
   @serial: (actors)->
@@ -45,7 +45,7 @@ class Junc
 
   @each : (actor, isSerial = false)->
     if (len = arguments.length) isnt 1 and len isnt 2
-      throw new TypeError "Junc.each() takes exactly 2 arguments (#{len} given)"
+      throw new TypeError "Relay.each() takes exactly 2 arguments (#{len} given)"
     if isSerial
       new SerialEachActor actor
     else
@@ -731,19 +731,19 @@ class Easing
 #endif
 
 #if BROWSER
-junc =
-  Junc                : Junc
+relay =
+  Relay               : Relay
   Easing              : Easing
   AnimationFrameTicker: AnimationFrameTicker
 if module?
-  module.exports = junc
+  module.exports = relay
 else if define?
-  define -> junc
+  define -> relay
 else if window?
   unless window.mn? then window.mn = {}
   unless window.mn.dsk? then window.mn.dsk = {}
-  window.mn.dsk.junc = junc
+  window.mn.dsk.relay = relay
 #else
 module.exports =
-  Junc: Junc
+  Relay: Relay
 #endif

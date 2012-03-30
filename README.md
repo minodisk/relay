@@ -1,7 +1,8 @@
-# JuncJS
+# RelayJS
 
 Asynchronous flow-control module for Node.js, RequireJS and browser.
 
+* Relays asynchronous functions serially or parallely.
 * Supports deep nesting flow.
 * Supports tween and easing methods only for browser.
 
@@ -9,28 +10,29 @@ Asynchronous flow-control module for Node.js, RequireJS and browser.
 
 ### Node.js
 
-    $ npm install junc
+    $ npm install relay
 
 ### RequireJS
 
     <script type="text/javascript" src="require.js"></script>
     <script type="text/javascript">
-      require(['junc'], function (junc) {
-        var Junc = junc.Junc;
+      require(['relay'], function (relay) {
+        var Relay = relay.Relay;
       });
     </script>
 
 ### browser
 
-    <script type="text/javascript" src="junc.js"></script>
+    <script type="text/javascript" src="relay.js"></script>
     <script>
-      var Junc = window.mn.dsk.junc.Junc;
+      var Relay = window.mn.dsk.relay.Relay;
     </script>
 
 ## API Documentation
 
-### Junc
+### Relay
 
+* **func(function)** - \[static\] Creates function actor.
 * **serial(actor\[, actor, ...\])** - \[static\] Creates serial flow with arguments of actor.
 * **serial(actors)** - \[static\] Creates serial flow with array of actor.
 * **parallel(actor\[, actor, ...\])** - \[static\] Creates parallel flow with arguments of actor.

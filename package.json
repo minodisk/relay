@@ -1,13 +1,13 @@
 {
-  "name"       :"junc",
+  "name"       :"relay",
   "version"    :"0.1.4",
-  "description":"Asynchronous flow-controll module.",
+  "description":"Asynchronous flow-control module.",
   "tags"       :["asynchronous control flow step control serial parallel deep nest"],
   "author"     :"Daisuke MINO <daisuke.mino@gmail.com>",
   "license"    :"MIT",
-  "main"       :"./lib/node/junc",
+  "main"       :"./lib/node/relay",
   "repository" :{
     "type":"git",
-    "url" :"https://minodisk@github.com/minodisk/junc-js.git"
+    "url" :"https://minodisk@github.com/minodisk/relay-js.git"
   }
 }

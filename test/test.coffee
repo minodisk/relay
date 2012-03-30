@@ -1,5 +1,5 @@
 fs = require 'fs'
-{ Junc } = require '../lib/browser/junc'
+{ Relay } = require '../lib/browser/relay'
 
 getTime = ->
   new Date().getTime()
@@ -8,7 +8,7 @@ module.exports =
 
 'test phase':
   'func sync': (test)->
-    Junc.func(->
+    Relay.func(->
       test.strictEqual @local, undefined
       test.strictEqual @global.index, undefined
       @next()
@@ -18,7 +18,7 @@ module.exports =
       test.done()
     ).start()
   'func(async)': (test)->
-    Junc.func(
+    Relay.func(
       ->
         test.strictEqual @local, undefined
         test.strictEqual @global.index, undefined
@@ -30,7 +30,7 @@ module.exports =
         test.done()
     ).start()
   wait: (test)->
-    Junc.wait(10).complete(
+    Relay.wait(10).complete(
       ->
         test.strictEqual @local, undefined
         test.strictEqual @global.index, undefined
@@ -38,7 +38,7 @@ module.exports =
     ).start()
   tween: (test)->
     target = {}
-    Junc.tween(target, { a: 0 }, { a: 10 }, 10).complete(
+    Relay.tween(target, { a: 0 }, { a: 10 }, 10).complete(
       ->
         test.strictEqual @local, undefined
         test.strictEqual @global.index, undefined
@@ -46,7 +46,7 @@ module.exports =
     ).start()
   to: (test)->
     target = { a: 0 }
-    Junc.to(target, { a: 10 }, 10).complete(
+    Relay.to(target, { a: 10 }, 10).complete(
       ->
         test.strictEqual @local, undefined
         test.strictEqual @global.index, undefined
@@ -55,20 +55,20 @@ module.exports =
 
   serial:
     'func(sync)': (test)->
-      Junc.serial(
-        Junc.func(->
+      Relay.serial(
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 0
             @next()
         )
-        Junc.func(->
+        Relay.func(->
             test.strictEqual @local.index, 1
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 1
             @next()
         )
-        Junc.func(->
+        Relay.func(->
             test.strictEqual @local.index, 2
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 2
@@ -82,20 +82,20 @@ module.exports =
           test.done()
       ).start()
     'func(async)': (test)->
-      Junc.serial(
-        Junc.func(->
+      Relay.serial(
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 0
             setTimeout @next, 10
         )
-        Junc.func(->
+        Relay.func(->
             test.strictEqual @local.index, 1
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 1
             setTimeout @next, 10
         )
-        Junc.func(->
+        Relay.func(->
             test.strictEqual @local.index, 2
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 2
@@ -109,10 +109,10 @@ module.exports =
           test.done()
       ).start()
     wait: (test)->
-      Junc.serial(
-        Junc.wait(10)
-        Junc.wait(10)
-        Junc.wait(10)
+      Relay.serial(
+        Relay.wait(10)
+        Relay.wait(10)
+        Relay.wait(10)
       ).complete(
         ->
           test.strictEqual @local.index, 3
@@ -122,35 +122,35 @@ module.exports =
       ).start()
     mixed: (test)->
       target = {}
-      Junc.serial(
-        Junc.func(->
+      Relay.serial(
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 8
             test.strictEqual @global.index, 0
             @next()
         )
-        Junc.wait(10)
-        Junc.func(->
+        Relay.wait(10)
+        Relay.func(->
             test.strictEqual @local.index, 2
             test.strictEqual @local.length, 8
             test.strictEqual @global.index, 2
             setTimeout @next, 10
         )
-        Junc.func(->
+        Relay.func(->
             test.strictEqual @local.index, 3
             test.strictEqual @local.length, 8
             test.strictEqual @global.index, 3
             @next()
         )
-        Junc.tween(target, {a: 0}, {a: 10}, 10)
-        Junc.func(->
+        Relay.tween(target, {a: 0}, {a: 10}, 10)
+        Relay.func(->
             test.strictEqual @local.index, 5
             test.strictEqual @local.length, 8
             test.strictEqual @global.index, 5
             @next()
         )
-        Junc.to(target, {a: 20}, 10)
-        Junc.func(->
+        Relay.to(target, {a: 20}, 10)
+        Relay.func(->
             test.strictEqual @local.index, 7
             test.strictEqual @local.length, 8
             test.strictEqual @global.index, 7
@@ -166,20 +166,20 @@ module.exports =
 
   parallel:
     'func(sync)': (test)->
-      Junc.parallel(
-        Junc.func(->
+      Relay.parallel(
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 0
             @next()
         )
-        Junc.func(->
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 0
             @next()
         )
-        Junc.func(->
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 0
@@ -193,20 +193,20 @@ module.exports =
           test.done()
       ).start()
     func: (test)->
-      Junc.parallel(
-        Junc.func(->
+      Relay.parallel(
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 0
             setTimeout @next, 10
         )
-        Junc.func(->
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 0
             setTimeout @next, 10
         )
-        Junc.func(->
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 3
             test.strictEqual @global.index, 0
@@ -220,10 +220,10 @@ module.exports =
           test.done()
       ).start()
     wait: (test)->
-      Junc.parallel(
-        Junc.wait(10)
-        Junc.wait(10)
-        Junc.wait(10)
+      Relay.parallel(
+        Relay.wait(10)
+        Relay.wait(10)
+        Relay.wait(10)
       ).complete(
         ->
           test.strictEqual @local.index, 3
@@ -233,35 +233,35 @@ module.exports =
       ).start()
     mixed: (test)->
       target = {}
-      Junc.parallel(
-        Junc.func(->
+      Relay.parallel(
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 8
             test.strictEqual @global.index, 0
             @next()
         )
-        Junc.wait(10)
-        Junc.func(->
+        Relay.wait(10)
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 8
             test.strictEqual @global.index, 0
             setTimeout @next, 10
         )
-        Junc.func(->
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 8
             test.strictEqual @global.index, 0
             @next()
         )
-        Junc.tween(target, {a: 0}, {a: 10}, 10)
-        Junc.func(->
+        Relay.tween(target, {a: 0}, {a: 10}, 10)
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 8
             test.strictEqual @global.index, 0
             @next()
         )
-        Junc.to(target, {a: 20}, 10)
-        Junc.func(->
+        Relay.to(target, {a: 20}, 10)
+        Relay.func(->
             test.strictEqual @local.index, 0
             test.strictEqual @local.length, 8
             test.strictEqual @global.index, 0
@@ -279,33 +279,33 @@ module.exports =
   serial:
     serial: (test)->
       counter = 0
-      Junc.serial(
-        Junc.serial(
-          Junc.func(->
+      Relay.serial(
+        Relay.serial(
+          Relay.func(->
               test.strictEqual counter++, 0
               @next()
           )
-          Junc.func(->
+          Relay.func(->
               test.strictEqual counter++, 1
               @next()
           )
         )
-        Junc.serial(
-          Junc.func(->
+        Relay.serial(
+          Relay.func(->
               test.strictEqual counter++, 2
               @next()
           )
-          Junc.func(->
+          Relay.func(->
               test.strictEqual counter++, 3
               @next()
           )
         )
-        Junc.serial(
-          Junc.func(->
+        Relay.serial(
+          Relay.func(->
               test.strictEqual counter++, 4
               @next()
           )
-          Junc.func(->
+          Relay.func(->
               test.strictEqual counter++, 5
               @next()
           )
@@ -317,33 +317,33 @@ module.exports =
       ).start()
     parallel: (test)->
       counter = 0
-      Junc.serial(
-        Junc.parallel(
-          Junc.func(->
+      Relay.serial(
+        Relay.parallel(
+          Relay.func(->
               test.strictEqual counter++, 0
               @next()
           )
-          Junc.func(->
+          Relay.func(->
               test.strictEqual counter++, 1
               @next()
           )
         )
-        Junc.parallel(
-          Junc.func(->
+        Relay.parallel(
+          Relay.func(->
               test.strictEqual counter++, 2
               @next()
           )
-          Junc.func(->
+          Relay.func(->
               test.strictEqual counter++, 3
               @next()
           )
         )
-        Junc.parallel(
-          Junc.func(->
+        Relay.parallel(
+          Relay.func(->
               test.strictEqual counter++, 4
               @next()
           )
-          Junc.func(->
+          Relay.func(->
               test.strictEqual counter++, 5
               @next()
           )
@@ -356,7 +356,7 @@ module.exports =
 
 'test shared params':
   sync: (test)->
-    Junc.func(
+    Relay.func(
       ->
         @global.a = 'foo'
         @next()
@@ -366,7 +366,7 @@ module.exports =
         test.done()
     ).start()
   func: (test)->
-    Junc.func(
+    Relay.func(
       ->
         @global.a = 'foo'
         setTimeout @next, 10
@@ -378,18 +378,18 @@ module.exports =
 
   serial:
     sync: (test)->
-      Junc.serial(
-        Junc.func(->
+      Relay.serial(
+        Relay.func(->
             @local.str = 'foo'
             @global.str = 'foo'
             @next()
         )
-        Junc.func(->
+        Relay.func(->
             @local.str += 'bar'
             @global.str += 'bar'
             @next()
         )
-        Junc.func(->
+        Relay.func(->
             @local.str += 'baz'
             @global.str += 'baz'
             @next()
@@ -401,27 +401,27 @@ module.exports =
           test.done()
       ).start()
     serial: (test)->
-      Junc.serial(
-        Junc.func(->
+      Relay.serial(
+        Relay.func(->
             @local.str = 'foo'
             @global.str = 'foo'
             @next()
         )
-        Junc.serial(
-          Junc.func(->
+        Relay.serial(
+          Relay.func(->
               test.strictEqual @local.str, undefined
               @local.str = 'bar'
               @global.str += 'bar'
               @next()
           )
-          Junc.func(->
+          Relay.func(->
               @local.str += 'baz'
               @global.str += 'baz'
               test.strictEqual @local.str, 'barbaz'
               @next()
           )
         )
-        Junc.func(->
+        Relay.func(->
             @local.str += 'qux'
             @global.str += 'qux'
             @next()
@@ -433,23 +433,23 @@ module.exports =
           test.done()
       ).start()
     parallel: (test)->
-      Junc.serial(
-        Junc.func(->
+      Relay.serial(
+        Relay.func(->
             @local.num = 2
             @global.num = 2
             @next()
         )
-        Junc.parallel(
-          Junc.func(->
+        Relay.parallel(
+          Relay.func(->
               @global.num *= 3
               @next()
           )
-          Junc.func(->
+          Relay.func(->
               @global.num *= 4
               @next()
           )
         )
-        Junc.func(->
+        Relay.func(->
             @local.num += 1
             @global.num += 1
             @next()
@@ -463,16 +463,16 @@ module.exports =
 
   parallel:
     sync: (test)->
-      Junc.parallel(
-        Junc.func(->
+      Relay.parallel(
+        Relay.func(->
             @global.num = 1
             @next()
         )
-        Junc.func(->
+        Relay.func(->
             @global.num += 2
             @next()
         )
-        Junc.func(->
+        Relay.func(->
             @global.num += 3
             @next()
         )
@@ -482,17 +482,17 @@ module.exports =
           test.done()
       ).start()
     serial: (test)->
-      Junc.parallel(
-        Junc.func(->
+      Relay.parallel(
+        Relay.func(->
             @global.num = 1
             @next()
         )
-        Junc.serial(
-          Junc.func(->
+        Relay.serial(
+          Relay.func(->
               @global.num += 2
               @next()
           )
-          Junc.func(->
+          Relay.func(->
               @global.num += 3
               @next()
           )
@@ -503,17 +503,17 @@ module.exports =
           test.done()
       ).start()
     parallel: (test)->
-      Junc.parallel(
-        Junc.func(->
+      Relay.parallel(
+        Relay.func(->
             @global.num = 1
             @next()
         )
-        Junc.parallel(
-          Junc.func(->
+        Relay.parallel(
+          Relay.func(->
               @global.num += 2
               @next()
           )
-          Junc.func(->
+          Relay.func(->
               @global.num += 3
               @next()
           )
@@ -526,7 +526,7 @@ module.exports =
 
 'test arguments':
   func: (test)->
-    Junc.func((a, b)->
+    Relay.func((a, b)->
       test.strictEqual a, 'a'
       test.strictEqual b, 'b'
       @next a, b
@@ -536,7 +536,7 @@ module.exports =
       test.done()
     ).start 'a', 'b'
   file: (test)->
-    Junc.func(->
+    Relay.func(->
       fs.readFile "#{__dirname}/data/numbers.json", 'utf8', @next
     ).complete((err, data)->
       numbers = JSON.parse data
@@ -546,13 +546,13 @@ module.exports =
 
   serial:
     func: (test)->
-      Junc.serial(
-        Junc.func((a, b)->
+      Relay.serial(
+        Relay.func((a, b)->
           test.strictEqual a, 'a'
           test.strictEqual b, 'b'
           @next 'c', 'd'
         )
-        Junc.func((c, d)->
+        Relay.func((c, d)->
           test.strictEqual c, 'c'
           test.strictEqual d, 'd'
           @next 'e', 'f'
@@ -563,19 +563,19 @@ module.exports =
         test.done()
       ).start 'a', 'b'
     serial: (test)->
-      Junc.serial(
-        Junc.func((a, b)->
+      Relay.serial(
+        Relay.func((a, b)->
           test.strictEqual a, 'a'
           test.strictEqual b, 'b'
           @next 'c', 'd'
         )
-        Junc.serial(
-          Junc.func((c, d)->
+        Relay.serial(
+          Relay.func((c, d)->
             test.strictEqual c, 'c'
             test.strictEqual d, 'd'
             @next 'e', 'f'
           )
-          Junc.func((e, f)->
+          Relay.func((e, f)->
             test.strictEqual e, 'e'
             test.strictEqual f, 'f'
             @next 'g', 'h'
@@ -587,19 +587,19 @@ module.exports =
         test.done()
       ).start 'a', 'b'
     serial: (test)->
-      Junc.serial(
-        Junc.func((a, b)->
+      Relay.serial(
+        Relay.func((a, b)->
           test.strictEqual a, 'a'
           test.strictEqual b, 'b'
           @next 'c', 'd'
         )
-        Junc.parallel(
-          Junc.func((c, d)->
+        Relay.parallel(
+          Relay.func((c, d)->
             test.strictEqual c, 'c'
             test.strictEqual d, 'd'
             @next 'e', 'f'
           )
-          Junc.func((c, d)->
+          Relay.func((c, d)->
             test.strictEqual c, 'c'
             test.strictEqual d, 'd'
             @next 'g', 'h'
@@ -611,20 +611,20 @@ module.exports =
         test.done()
       ).start 'a', 'b'
     complex: (test)->
-      Junc.serial(
-        Junc.serial(
-          Junc.func((a, b)->
+      Relay.serial(
+        Relay.serial(
+          Relay.func((a, b)->
             test.strictEqual a, 'a'
             test.strictEqual b, 'b'
             @next 'c', 'd'
           )
-          Junc.func((c, d)->
+          Relay.func((c, d)->
             test.strictEqual c, 'c'
             test.strictEqual d, 'd'
             @next 'e', 'f'
           )
         )
-        Junc.func((e, f)->
+        Relay.func((e, f)->
           test.strictEqual e, 'e'
           test.strictEqual f, 'f'
           @next 'g', 'h'
@@ -635,13 +635,13 @@ module.exports =
 
   parallel:
     func: (test)->
-      Junc.parallel(
-        Junc.func((a, b)->
+      Relay.parallel(
+        Relay.func((a, b)->
           test.strictEqual a, 'a'
           test.strictEqual b, 'b'
           @next 'c', 'd'
         )
-        Junc.func((a, b)->
+        Relay.func((a, b)->
           test.strictEqual a, 'a'
           test.strictEqual b, 'b'
           @next 'e', 'f'
@@ -652,26 +652,26 @@ module.exports =
         test.done()
       ).start 'a', 'b'
     serial: (test)->
-      Junc.parallel(
-        Junc.serial(
-          Junc.func((a, b)->
+      Relay.parallel(
+        Relay.serial(
+          Relay.func((a, b)->
             test.strictEqual a, 'a'
             test.strictEqual b, 'b'
             @next 'c', 'd'
           )
-          Junc.func((c, d)->
+          Relay.func((c, d)->
             test.strictEqual c, 'c'
             test.strictEqual d, 'd'
             @next 'e', 'f'
           )
         )
-        Junc.serial(
-          Junc.func((a, b)->
+        Relay.serial(
+          Relay.func((a, b)->
             test.strictEqual a, 'a'
             test.strictEqual b, 'b'
             @next 'g', 'h'
           )
-          Junc.func((g, h)->
+          Relay.func((g, h)->
             test.strictEqual g, 'g'
             test.strictEqual h, 'h'
             @next 'i', 'j'
@@ -685,7 +685,7 @@ module.exports =
 
   clone:
     func: (test)->
-      src = Junc.func(->
+      src = Relay.func(->
         setTimeout =>
           @next()
         , 100
@@ -696,8 +696,8 @@ module.exports =
         test.done()
       ).start()
     serial: (test)->
-      src = Junc.serial(
-        Junc.func(->
+      src = Relay.serial(
+        Relay.func(->
           setTimeout =>
             @next()
           , 100
@@ -711,30 +711,30 @@ module.exports =
         test.done()
       ).start()
     parallel: (test)->
-      src = Junc.func(->
+      src = Relay.func(->
         setTimeout =>
           @next()
         , 100
       )
       dst = src.clone()
-      Junc.parallel(src, dst).complete(->
+      Relay.parallel(src, dst).complete(->
         test.done()
       ).start()
     'parallel serial': (test)->
-      src = Junc.serial(
-        Junc.func(->
+      src = Relay.serial(
+        Relay.func(->
           setTimeout =>
             @next()
           , 100
         )
-        Junc.func(->
+        Relay.func(->
           setTimeout =>
             @next()
           , 100
         )
       )
       dst = src.clone()
-      Junc.parallel(src, dst).complete(->
+      Relay.parallel(src, dst).complete(->
         test.done()
       ).start()
 
@@ -743,8 +743,8 @@ module.exports =
       counter = 0
       array = ['a', 'b']
       time = getTime()
-      Junc.each(
-        Junc.func((elem, i, arr)->
+      Relay.each(
+        Relay.func((elem, i, arr)->
           test.strictEqual elem, array[counter]
           test.strictEqual i, counter++
           test.deepEqual arr, array
@@ -762,9 +762,9 @@ module.exports =
       counter = 0
       array = ['a', 'b']
       time = getTime()
-      Junc.each(
-        Junc.serial(
-          Junc.func((elem, i, arr)->
+      Relay.each(
+        Relay.serial(
+          Relay.func((elem, i, arr)->
             test.strictEqual elem, array[counter]
             test.strictEqual i, counter++
             test.deepEqual arr, array
@@ -772,7 +772,7 @@ module.exports =
               @next elem, elem + 'c'
             , 100
           )
-          Junc.func((str0, str1)->
+          Relay.func((str0, str1)->
             setTimeout =>
               @next str0, str1, str1 + 'd'
             , 200
@@ -788,9 +788,9 @@ module.exports =
       counter = 0
       array = ['a', 'b']
       time = getTime()
-      Junc.each(
-        Junc.parallel(
-          Junc.func((elem, i, arr)->
+      Relay.each(
+        Relay.parallel(
+          Relay.func((elem, i, arr)->
             test.strictEqual elem, array[counter]
             test.strictEqual i, counter
             test.deepEqual arr, array
@@ -798,7 +798,7 @@ module.exports =
               @next elem, elem + 'c'
             , 100
           )
-          Junc.func((elem, i, arr)->
+          Relay.func((elem, i, arr)->
             test.strictEqual elem, array[counter]
             test.strictEqual i, counter++
             test.deepEqual arr, array
@@ -819,8 +819,8 @@ module.exports =
       counter = 0
       array = ['a', 'b']
       time = getTime()
-      Junc.each(
-        Junc.func((elem, i, arr)->
+      Relay.each(
+        Relay.func((elem, i, arr)->
           test.strictEqual elem, array[counter]
           test.strictEqual i, counter++
           test.deepEqual arr, array
@@ -838,9 +838,9 @@ module.exports =
       counter = 0
       array = ['a', 'b']
       time = getTime()
-      Junc.each(
-        Junc.serial(
-          Junc.func((elem, i, arr)->
+      Relay.each(
+        Relay.serial(
+          Relay.func((elem, i, arr)->
             test.strictEqual elem, array[counter]
             test.strictEqual i, counter++
             test.deepEqual arr, array
@@ -848,7 +848,7 @@ module.exports =
               @next elem, elem + 'c'
             , 100
           )
-          Junc.func((str0, str1)->
+          Relay.func((str0, str1)->
             setTimeout =>
               @next str0, str1, str1 + 'd'
             , 200
@@ -864,9 +864,9 @@ module.exports =
       counter = 0
       array = ['a', 'b']
       time = getTime()
-      Junc.each(
-        Junc.parallel(
-          Junc.func((elem, i, arr)->
+      Relay.each(
+        Relay.parallel(
+          Relay.func((elem, i, arr)->
             test.strictEqual elem, array[counter]
             test.strictEqual i, counter
             test.deepEqual arr, array
@@ -874,7 +874,7 @@ module.exports =
               @next elem, elem + 'c'
             , 100
           )
-          Junc.func((elem, i, arr)->
+          Relay.func((elem, i, arr)->
             test.strictEqual elem, array[counter]
             test.strictEqual i, counter++
             test.deepEqual arr, array
@@ -892,30 +892,30 @@ module.exports =
 
 'test skip':
   serial: (test)->
-    Junc.serial(
-      Junc.func(->
+    Relay.serial(
+      Relay.func(->
           @global.str = 'a'
           @next()
       )
-      Junc.serial(
-        Junc.func(->
+      Relay.serial(
+        Relay.func(->
             @global.str += 'b'
             @next()
         )
-        Junc.func(->
+        Relay.func(->
             if true
               @skip()
             else
               @global.str += 'c'
               @next()
         )
-        Junc.func(->
+        Relay.func(->
             test.ok false, 'expect to be skipped'
             @global.str += 'd'
             @next()
         )
       )
-      Junc.func(->
+      Relay.func(->
           @global.str += 'e'
           @next()
       )
@@ -925,30 +925,30 @@ module.exports =
         test.done()
     ).start()
   parallel: (test)->
-    Junc.serial(
-      Junc.func(->
+    Relay.serial(
+      Relay.func(->
           @global.value = 0
           @next()
       )
-      Junc.parallel(
-        Junc.func(->
+      Relay.parallel(
+        Relay.func(->
             @global.value += 1
             @next()
         )
-        Junc.func(->
+        Relay.func(->
             if true
               @skip()
             else
               @global.value += 2
               @next()
         )
-        Junc.func(->
+        Relay.func(->
             test.ok false, 'expect to be skipped'
             @global.value += 3
             @next()
         )
       )
-      Junc.func(->
+      Relay.func(->
           @global.value *= 10
           @next()
       )
