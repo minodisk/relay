@@ -7,7 +7,7 @@ path = require 'path'
 {spawn} = require 'child_process'
 coffee = require 'coffee-script'
 {parser, uglify} = require 'uglify-js'
-{Junc} = require 'junc'
+{Relay} = require 'relay'
 
 SRC_DIR = 'src'
 DST_DIR = 'lib'
@@ -36,32 +36,32 @@ padLeft = (num, length = 2, pad = '0')->
   str
 
 startCompile = ->
-  Junc.serial(
-    Junc.func(->
+  Relay.serial(
+    Relay.func(->
       console.log "#{timeStamp()} Start compiling ..."
       @next ['node', 'browser']
     )
-    Junc.each(
-      Junc.func((dirname)->
+    Relay.each(
+      Relay.func((dirname)->
         fs.mkdir path.join(DST_DIR, dirname), 0777, @next
       )
     )
-    Junc.func(->
+    Relay.func(->
       fs.readdir SRC_DIR, @next
     )
-    Junc.func((err, files)->
+    Relay.func((err, files)->
       if err?
         console.log err
       else
         @next files
     )
-    Junc.each(
-      Junc.serial(
-        Junc.func((file)->
+    Relay.each(
+      Relay.serial(
+        Relay.func((file)->
           @local.basename = path.basename file, path.extname(file)
           fs.readFile path.join(SRC_DIR, file), 'utf8', @next
         )
-        Junc.func((err, code)->
+        Relay.func((err, code)->
           if err?
             @skip()
           else
@@ -83,12 +83,12 @@ startCompile = ->
               { path: "browser/#{@local.basename}.min.js", code: uglified }
             ]
         )
-        Junc.each(
-          Junc.serial(
-            Junc.func((file)->
+        Relay.each(
+          Relay.serial(
+            Relay.func((file)->
               fs.writeFile path.join(DST_DIR, file.path), file.code, @next
             )
-            Junc.func((err)->
+            Relay.func((err)->
               if err?
                 console.log err
                 @skip()
@@ -99,7 +99,7 @@ startCompile = ->
         )
       )
     )
-    Junc.func(->
+    Relay.func(->
       console.log "#{timeStamp()} Complete compiling!"
       @next()
     )
