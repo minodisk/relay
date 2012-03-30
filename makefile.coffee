@@ -1,5 +1,5 @@
 ###
-makefile.coffee v0.1.2
+makefile.coffee v0.1.3
 ###
 
 fs = require 'fs'
