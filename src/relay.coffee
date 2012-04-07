@@ -44,6 +44,7 @@ class Relay
     new ParallelActor actors
 
   @each : (actor, isSerial = false)->
+    #TODO check the actor's length and isSerial's type
     if (len = arguments.length) isnt 1 and len isnt 2
       throw new TypeError "Relay.each() takes exactly 2 arguments (#{len} given)"
     if isSerial
