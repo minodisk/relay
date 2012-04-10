@@ -73,6 +73,7 @@ class Actor
     @
 
   complete: (callback)->
+    #TODO check the callback is function
     @onComplete = callback
     @
 
