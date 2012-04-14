@@ -1,6 +1,6 @@
 {
   "name"        :"relay",
-  "version"     :"0.1.5",
+  "version"     :"0.1.6",
   "description" :"Asynchronous flow-control module.",
   "tags"        :["async", "control", "flow", "step", "control", "serial", "parallel", "deep", "nest"],
   "author"      :{

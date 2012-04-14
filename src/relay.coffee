@@ -375,14 +375,12 @@ class AnimationFrameTicker
 
   _onAnimationFrame: (time)=>
     @_counter++
-#    console.log '_onAnimationFrame:', @_counter
     for handler in @_handlers
-      handler time
-      # if use setTimeout, check @_running is true
-#      do (handler)->
-#        setTimeout ->
-#          handler time
-#        , 0
+      do (handler)=>
+        setTimeout =>
+          if @_running
+            handler time
+        , 0
     if @_running is true
       _requestAnimationFrame @_onAnimationFrame
     return
