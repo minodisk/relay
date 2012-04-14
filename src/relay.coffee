@@ -17,6 +17,15 @@ _requestAnimationFrame = do ->
   window?.oRequestAnimationFrame or
   (callback) -> setTimeout (->callback(new Date().getTime())), 16.666666666666668
 _isArray = Array.isArray || (obj)-> Object.prototype.toString.call(obj) is '[object Array]'
+_indexOf = do ->
+  if Array.prototype.indexOf?
+    (arr, elem)->
+      arr.indexOf elem
+  else
+    (arr, elem)->
+      for val, i in arr
+        if arr[i] is elem then return i
+      return -1
 #else
 _isArray = Array.isArray
 #endif
@@ -280,7 +289,7 @@ class EasingActor extends Actor
       @object = EasingActor._getStyle @_target
     else
       @target = @object = @_target
-    @_requestAnimationFrame = AnimationFrameTicker.getInstance()
+    @_animationFrameTicker = AnimationFrameTicker.getInstance()
 
   clone: ->
     new EasingActor @_target, @src, @dst, @duration, @easing
@@ -313,7 +322,7 @@ class EasingActor extends Actor
             changer.unit = if value[2]? then value[2] else ''
     @changers = changers
     @_beginningTime = new Date().getTime()
-    @_requestAnimationFrame.addHandler @_update
+    @_animationFrameTicker.addHandler @_update
     @onStart?()
     @
 
@@ -322,17 +331,15 @@ class EasingActor extends Actor
     if @time >= @duration
       @time = @duration
       factor = 1
-      @_requestAnimationFrame.removeHandler @_update
     else
-      factor = @easing(@time, 0, 1, @duration)
-    target = @target
-    changers = @changers
-    for prop of changers
-      changer = changers[prop]
+      factor = @easing @time, 0, 1, @duration
+    for prop, changer of @changers
       current = changer.src + (changer.dst - changer.src) * factor
-      target[prop] = if changer.unit then "#{current}#{changer.unit}" else current
+      @target[prop] = if changer.unit then "#{current}#{changer.unit}" else current
     @onUpdate?()
     if @time is @duration
+#      console.log 'complete!!', @_animationFrameTicker._running, @_animationFrameTicker._counter
+      @_animationFrameTicker.removeHandler @_update
       @_onComplete()
     return
 
@@ -346,31 +353,37 @@ class AnimationFrameTicker
 
   constructor: ->
     unless AnimationFrameTicker.internal
-      throw new Error "Ticker is singleton model, call Ticker.getInstance()."
+      throw new Error "AnimationFrameTicker: call AnimationFrameTicker.getInstance()"
     AnimationFrameTicker.internal = false
     @_handlers = []
-    @_continuous = false
+    @_running = false
     @_counter = 0
 
-  addHandler: (handler)=>
-    @_handlers.push handler
-    if @_continuous is false
-      @_continuous = true
-      _requestAnimationFrame @_onAnimationFrame
+  addHandler: (handler)->
+    if _indexOf(@_handlers, handler) is -1
+      @_handlers.push handler
+      if @_running is false
+        @_running = true
+        _requestAnimationFrame @_onAnimationFrame
     return
 
   removeHandler: (handler)->
     @_handlers.splice @_handlers.indexOf(handler), 1
     if @_handlers.length is 0
-      @_continuous = false
+      @_running = false
     return
 
   _onAnimationFrame: (time)=>
     @_counter++
+#    console.log '_onAnimationFrame:', @_counter
     for handler in @_handlers
-      do (handler) ->
-        setTimeout (-> handler time), 0
-    if @_continuous is true
+      handler time
+      # if use setTimeout, check @_running is true
+#      do (handler)->
+#        setTimeout ->
+#          handler time
+#        , 0
+    if @_running is true
       _requestAnimationFrame @_onAnimationFrame
     return
 

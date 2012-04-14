@@ -12,7 +12,7 @@ afterFunc = ->
 
 target = {}
 Relay
-.tween(target, { a: 0 }, { a: 10 }, 1000)
+.tween(target, { a: 0 }, { a: 10 }, 100)
 .complete(->
   console.log 'call after func'
   afterFunc()
