@@ -1,13 +1,21 @@
 {
-  "name"       :"relay",
-  "version"    :"0.1.4",
-  "description":"Asynchronous flow-control module.",
-  "tags"       :["asynchronous control flow step control serial parallel deep nest"],
-  "author"     :"Daisuke MINO <daisuke.mino@gmail.com>",
-  "license"    :"MIT",
-  "main"       :"./lib/node/relay",
-  "repository" :{
+  "name"        :"relay",
+  "version"     :"0.1.4",
+  "description" :"Asynchronous flow-control module.",
+  "tags"        :["async", "control", "flow", "step", "control", "serial", "parallel", "deep", "nest"],
+  "author"      :{
+    "name" :"Daisuke Mino",
+    "email":"daisuke.mino@gmail.com"
+  },
+  "repository"  :{
     "type":"git",
     "url" :"https://minodisk@github.com/minodisk/relay-js.git"
-  }
+  },
+  "engines"     :[
+    "node"
+  ],
+  "license"     :"MIT",
+  "dependencies":{
+  },
+  "main"        :"./lib/node/relay"
 }

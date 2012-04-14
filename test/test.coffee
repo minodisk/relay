@@ -7,6 +7,7 @@ getTime = ->
 module.exports =
 
 'test phase':
+
   'func sync': (test)->
     Relay.func(->
       test.strictEqual @local, undefined
@@ -17,41 +18,49 @@ module.exports =
       test.strictEqual @global.index, undefined
       test.done()
     ).start()
+
   'func(async)': (test)->
-    Relay.func(
-      ->
-        test.strictEqual @local, undefined
-        test.strictEqual @global.index, undefined
-        setTimeout @next, 10
-    ).complete(
-      ->
-        test.strictEqual @local, undefined
-        test.strictEqual @global.index, undefined
-        test.done()
+    Relay.func(->
+      test.strictEqual @local, undefined
+      test.strictEqual @global.index, undefined
+      setTimeout @next, 10
+    ).complete(->
+      test.strictEqual @local, undefined
+      test.strictEqual @global.index, undefined
+      test.done()
     ).start()
+
   wait: (test)->
-    Relay.wait(10).complete(
-      ->
-        test.strictEqual @local, undefined
-        test.strictEqual @global.index, undefined
-        test.done()
-    ).start()
-  tween: (test)->
-    target = {}
-    Relay.tween(target, { a: 0 }, { a: 10 }, 10).complete(
-      ->
-        test.strictEqual @local, undefined
-        test.strictEqual @global.index, undefined
-        test.done()
-    ).start()
-  to: (test)->
-    target = { a: 0 }
-    Relay.to(target, { a: 10 }, 10).complete(
-      ->
-        test.strictEqual @local, undefined
-        test.strictEqual @global.index, undefined
-        test.done()
-    ).start()
+    Relay
+    .wait(10)
+    .complete(->
+      test.strictEqual @local, undefined
+      test.strictEqual @global.index, undefined
+      test.done()
+    )
+    .start()
+
+#  tween: (test)->
+#    target = {}
+#    Relay
+#    .tween(target, { a: 0 }, { a: 10 }, 10)
+#    .complete(->
+#      test.strictEqual @local, undefined
+#      test.strictEqual @global.index, undefined
+#      test.done()
+#    )
+#    .start()
+#
+#  to: (test)->
+#    target = { a: 0 }
+#    Relay
+#    .to(target, { a: 10 }, 10)
+#    .complete(->
+#      test.strictEqual @local, undefined
+#      test.strictEqual @global.index, undefined
+#      test.done()
+#    )
+#    .start()
 
   serial:
     'func(sync)': (test)->
@@ -957,4 +966,3 @@ module.exports =
         test.strictEqual @global.value, 10
         test.done()
     ).start()
-

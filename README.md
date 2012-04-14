@@ -1,4 +1,4 @@
-# RelayJS
+# Relay
 
 Asynchronous flow-control module for Node.js, RequireJS and browser.
 
@@ -6,11 +6,18 @@ Asynchronous flow-control module for Node.js, RequireJS and browser.
 * Supports deep nesting flow.
 * Supports tween and easing methods only for browser.
 
-## Installation
-
-### Node.js
+## Installation at Node.js
 
     $ npm install relay
+
+## Use in browser
+
+### browser
+
+    <script type="text/javascript" src="relay.js"></script>
+    <script>
+      var Relay = window.mn.dsk.relay.Relay;
+    </script>
 
 ### RequireJS
 
@@ -19,13 +26,6 @@ Asynchronous flow-control module for Node.js, RequireJS and browser.
       require(['relay'], function (relay) {
         var Relay = relay.Relay;
       });
-    </script>
-
-### browser
-
-    <script type="text/javascript" src="relay.js"></script>
-    <script>
-      var Relay = window.mn.dsk.relay.Relay;
     </script>
 
 ## API Documentation

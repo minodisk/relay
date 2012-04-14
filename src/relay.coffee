@@ -25,12 +25,12 @@ class Relay
 
   @func: (func)->
     if (len = arguments.length) isnt 1
-      throw new TypeError "Relay.func() takes exactly 1 argument (#{len} given)"
+      throw new TypeError "Relay.func: takes exactly 1 argument (#{len} given)"
     new FunctionActor func
 
   @wait: (delay)->
     if (len = arguments.length) isnt 1
-      throw new TypeError "Relay.wait() takes exactly 1 argument (#{len} given)"
+      throw new TypeError "Relay.wait: takes exactly 1 argument (#{len} given)"
     new WaitActor delay
 
   @serial: (actors)->
@@ -44,15 +44,16 @@ class Relay
     new ParallelActor actors
 
   @each : (actor, isSerial = false)->
-    #TODO check the actor's length and isSerial's type
     if (len = arguments.length) isnt 1 and len isnt 2
-      throw new TypeError "Relay.each() takes exactly 2 arguments (#{len} given)"
+      throw new TypeError "Relay.each: takes exactly 2 arguments (#{len} given)"
+    if typeof isSerial isnt 'boolean'
+      throw new TypeError "Relay.each: isSerial is not boolean"
     if isSerial
       new SerialEachActor actor
     else
       new ParallelEachActor actor
 
-  #if BROWSER
+#if BROWSER
   @tween: (target, src, dst, duration = 1000, easing = Easing.linear)->
     new EasingActor target, src, dst, duration, easing
 
@@ -73,7 +74,8 @@ class Actor
     @
 
   complete: (callback)->
-    #TODO check the callback is function
+    if typeof callback isnt 'function'
+      throw new TypeError 'Actor.complete: callback is not function'
     @onComplete = callback
     @
 
@@ -92,7 +94,7 @@ class FunctionActor extends Actor
   constructor: (@_func)->
     super()
     if typeof @_func isnt 'function'
-      throw new TypeError 'new FunctionActor(func) func must be inspected Function.'
+      throw new TypeError 'FunctionActor: func is not function'
 
   clone: ->
     new FunctionActor @_func
@@ -114,7 +116,7 @@ class WaitActor extends FunctionActor
 
   constructor: (@_delay)->
     if isNaN @_delay
-      throw new TypeError 'new WaitActor(delay) delay must be inspected Number.'
+      throw new TypeError 'WaitActor: delay is not number'
     super (->
       setTimeout @next, @_delay
     ), null, true
@@ -130,7 +132,7 @@ class GroupActor extends Actor
     @__actors = []
     for actor, i in actors
       unless actor instanceof Actor
-        throw new TypeError 'Arguments[0] of GroupActor must be inspected Array of Actor.'
+        throw new TypeError 'GroupActor: actors is not array of Actor'
       @_actors[i] = actor.clone()
       @__actors[i] = actor.clone()
 
