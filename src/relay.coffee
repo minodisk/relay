@@ -368,9 +368,10 @@ class AnimationFrameTicker
     return
 
   removeHandler: (handler)->
-    @_handlers.splice @_handlers.indexOf(handler), 1
-    if @_handlers.length is 0
-      @_running = false
+    if (index = @_handlers.indexOf(handler)) isnt -1
+      @_handlers.splice index, 1
+      if @_handlers.length is 0
+        @_running = false
     return
 
   _onAnimationFrame: (time)=>
